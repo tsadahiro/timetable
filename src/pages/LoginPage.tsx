@@ -2,17 +2,25 @@ import { supabase } from "../lib/supabaseClient";
 import { Button, Box, Typography } from "@mui/material";
 
 export default function LoginPage() {
-const handleLogin = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo:
-        import.meta.env.MODE === "development"
-          ? "http://localhost:5173/timetable"
-          : "https://timetable-neon.vercel.app/timetable",
-    },
-  });
-};
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+	redirectTo: "https://timetable-neon.vercel.app/timetable",
+      },
+    });
+  };
+  //const handleLogin = async () => {
+  //  await supabase.auth.signInWithOAuth({
+  //    provider: "google",
+  //    options: {
+  //	redirectTo:
+  //      import.meta.env.MODE === "development"
+  //      ? "http://localhost:5173/timetable"
+  //      : "https://timetable-neon.vercel.app/timetable",
+  //    },
+  //  });
+  //};
   
   //const handleLogin = async () => {
   //  await supabase.auth.signInWithOAuth({
