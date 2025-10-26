@@ -1,0 +1,112 @@
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Typography,
+} from "@mui/material";
+import { supabase } from "../lib/supabaseClient";
+import JugyoEditDialog from "./JugyoEditDialog";
+
+export default function Timetable() {
+  const [jugyos, setJugyos] = useState<any[]>([]);
+  const [selectedJugyo, setSelectedJugyo] = useState<any>(null);
+  const [open, setOpen] = useState(false);
+
+  const days = ["月", "火", "水", "木", "金"];
+  const periods = [1, 2, 3, 4, 5];
+
+  const fetchJugyos = async () => {
+    const { data, error } = await supabase
+      .from("jugyos")
+      .select(`
+        id, year, term_id, wday_id, period, exception,
+        teachers ( fname, gname ),
+        kamokus ( name, level )
+      `)
+      .eq("year", 2025);
+    if (!error) setJugyos(data || []);
+  };
+
+  useEffect(() => {
+    fetchJugyos();
+  }, []);
+
+  // 指定曜日・時限の授業を取得
+  const jugyoAt = (dayIndex: number, period: number) =>
+    jugyos.find((j) => j.wday_id === dayIndex + 1 && j.period === period);
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom>
+        時間割（2025年度）
+      </Typography>
+
+      <Table size="small" sx={{ border: "1px solid #ccc" }}>
+        <TableHead>
+          <TableRow>
+            <TableCell>時限＼曜日</TableCell>
+            {days.map((d) => (
+              <TableCell key={d} align="center">
+                {d}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {periods.map((p) => (
+            <TableRow key={p}>
+              <TableCell align="center">{p}</TableCell>
+              {days.map((d, i) => {
+                const j = jugyoAt(i, p);
+                return (
+                  <TableCell
+                    key={d}
+                    align="center"
+                    sx={{
+                      cursor: j ? "pointer" : "default",
+                      bgcolor: j ? "#f9f9f9" : "#fff",
+                    }}
+                    onClick={() => {
+                      if (j) {
+                        setSelectedJugyo(j);
+                        setOpen(true);
+                      }
+                    }}
+                  >
+                    {j ? (
+                      <>
+                        <Typography variant="body2">
+                          {j.kamokus?.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {j.teachers
+                            ? `${j.teachers.fname} ${j.teachers.gname}`
+                            : ""}
+                        </Typography>
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* 編集ダイアログ */}
+      <JugyoEditDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        jugyo={selectedJugyo}
+        onSaved={fetchJugyos}
+      />
+    </Box>
+  );
+}
+

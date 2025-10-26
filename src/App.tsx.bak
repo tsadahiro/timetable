@@ -1,0 +1,269 @@
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabaseClient";
+import AvailableSlots from "./components/AvailableSlots";
+import JugyoManager from "./components/JugyoManager"
+import Timetable from "./components/Timetable"
+
+interface Jugyo {
+  id: number;
+  year: number;
+  period: number;
+  excercise: boolean | null;
+  exception: boolean | null;
+  notes: string | null;
+  comment: string | null;
+  kaisuu: number | null;
+  kamokus: { name: string | null } | null;
+  teachers: { gname: string | null; fname: string | null } | null;
+  terms: { name: string | null; abbr: string | null } | null;
+  wdays: { name: string | null } | null;
+}
+
+
+const days = ["月", "火", "水", "木", "金","その他"];
+const periods = [1, 2, 3, 4, 5, 6];
+
+export default function App() {
+  const [jugyos, setJugyos] = useState<Jugyo[]>([]);
+  const [term, setTerm] = useState<string>("第１");
+  const [year, setYear] = useState<number>(2025);
+  const [showAvailable, setShowAvailable] = useState(false);
+
+  async function fetchJugyos() {
+    const { data, error } = await supabase
+      .from("jugyos")
+      .select(
+        "*, kamokus(name), teachers(gname, fname), terms(name, abbr), wdays(name)"
+      )
+      .eq("year", year);
+    if (error) console.error("取得エラー:", error);
+    else setJugyos(data ?? []);
+  }
+
+  useEffect(() => {
+    fetchJugyos();
+  }, [year]);
+
+
+  function jugyosAt(day: string, period: number) {
+    return jugyos.filter(
+      (j) => {
+	//console.log(j.terms.name,term);
+	return(
+          j.wdays?.name === day &&
+          j.period === period &&
+	  j.terms?.name === term
+	)
+	}
+    );
+  }
+  const levels = [1,2,3,4]
+  const terms = ["第１","第３","第４"]
+  return (
+    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+    <button onClick={() => setShowAvailable(!showAvailable)}>
+      {showAvailable ? "時間割に戻る" : "空き枠を表示"}
+    </button>
+    {/*levels.map((level)=>
+      terms.map((term)=> <AvailableSlots level={level} year={year} term={term} />)
+      )*/
+    }
+    <Timetable year={2025}/>
+      
+      <h2>時間割表（{year}年度 {term}）</h2>
+
+      {/* 学期と年度の切替 */}
+      <div style={{ marginBottom: "1rem" }}>
+        <label>
+          年度：
+          <input
+            type="number"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            style={{ width: "5em", marginRight: "1em" }}
+          />
+        </label>
+        <label>
+          学期：
+          <select
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            style={{ marginRight: "1em" }}
+          >
+            <option value="第１">第1</option>
+            <option value="第２">第2</option>
+            <option value="第３">第3</option>
+            <option value="第４">第4</option>
+            <option value="通年">通年</option>
+          </select>
+        </label>
+        <button onClick={fetchJugyos}>再読込</button>
+      </div>
+
+      {/* 時間割表 */}
+      <table border={1} cellPadding={6} style={{ borderCollapse: "collapse" }}>
+	<thead>
+	  <tr>
+	    <th>曜日</th>
+	    {periods.map((p) => (
+              <th key={p}>{p}限</th>
+	    ))}
+	  </tr>
+	</thead>
+	<tbody>
+	  {days.map((d) => (
+	    <tr key={d}>
+              <td style={{ fontWeight: "bold", width: "80px" }}>{d}</td>
+              {periods.map((p) => {
+		const list = jugyosAt(d, p);
+		return (
+		  <td key={p} style={{ width: "160px", height: "80px" }}>
+		    {list.length > 0 ? (
+                      list.map((j) => (
+			<div
+			  key={j.id}
+			  style={{
+			    marginBottom: "4px",
+			    borderBottom: "1px solid #ccc",
+			    paddingBottom: "2px",
+			  }}
+			>
+			  <div>
+			    <b>{j.kamokus?.name}</b>
+			  </div>
+			  <div>
+			    {j.teachers?.fname}
+			    {/*j.teachers?.gname*/}
+			  </div>
+			</div>
+                      ))
+		    ) : (
+                      <span style={{ color: "#999" }}>-</span>
+		    )}
+		  </td>
+		);
+              })}
+	    </tr>
+	  ))}
+	</tbody>
+      </table>
+    </div>
+  );
+}
+
+//import { useEffect, useState } from "react";
+//import { supabase } from "./lib/supabaseClient";
+//
+//interface Jugyo {
+//  id: number;
+//  year: number;
+//  period: number;
+//  excercise: boolean | null;
+//  exception: boolean | null;
+//  notes: string | null;
+//  comment: string | null;
+//  kaisuu: number | null;
+//  kamokus: { name: string | null } | null;
+//  teachers: { gname: string | null; fname: string | null } | null;
+//  terms: { name: string | null; abbr: string | null } | null;
+//  wdays: { name: string | null } | null;
+//}
+//
+////const days = ["月曜日", "火曜日", "水曜日", "木曜日", "金曜日"];
+//const days = ["月", "火", "水", "木", "金"];
+//const periods = [1, 2, 3, 4, 5, 6];
+//
+//export default function App() {
+//  const [jugyos, setJugyos] = useState<Jugyo[]>([]);
+//  const [term, setTerm] = useState<string>("春学期");
+//  const [year, setYear] = useState<number>(2025);
+//
+//  // Supabaseから授業データを取得
+//  async function fetchJugyos() {
+//    const { data, error } = await supabase
+//      .from("jugyos")
+//      .select(
+//        "*, kamokus(name), teachers(gname, fname), terms(name, abbr), wdays(name)"
+//      )
+//      .eq("year", year);
+//    if (error) console.error(error);
+//    else {
+//      //console.log(data);
+//      setJugyos(data);
+//    }
+//  }
+//
+//  useEffect(() => {
+//    fetchJugyos();
+//  }, [year]);
+//
+//  function findJugyos(day: string, period: number) {
+//    return jugyos.filter(
+//      (j) => j.wdays?.name === day && j.period === period
+//    );
+//  }
+//
+//  return (
+//    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
+//      <h2>時間割表（{year}年度 {term}）</h2>
+//
+//      {/* 年度と学期を切り替え */}
+//      <div style={{ marginBottom: "1rem" }}>
+//        <label>
+//          年度：
+//          <input
+//            type="number"
+//            value={year}
+//            onChange={(e) => setYear(Number(e.target.value))}
+//            style={{ width: "5em", marginRight: "1em" }}
+//          />
+//        </label>
+//        <label>
+//          学期：
+//          <select
+//            value={term}
+//            onChange={(e) => setTerm(e.target.value)}
+//            style={{ marginRight: "1em" }}
+//          >
+//            <option value="第1">第1ターム</option>
+//            <option value="第2">第2ターム</option>
+//            <option value="第3">第3ターム</option>
+//            <option value="第4">第4ターム</option>
+//          </select>
+//        </label>
+//        <button onClick={fetchJugyos}>再読込</button>
+//      </div>
+//
+//      {/* 時間割表 */}
+//      <table border={1} cellPadding={8} style={{ borderCollapse: "collapse" }}>
+//        <thead>
+//          <tr>
+//            <th>時限</th>
+//            {days.map((d) => (
+//              <th key={d}>{d}</th>
+//            ))}
+//          </tr>
+//        </thead>
+//        <tbody>
+//          {periods.map((p) => (
+//            <tr key={p}>
+//              <td style={{ fontWeight: "bold" }}>{p}</td>
+//              {days.map((d) => {
+//    		{findJugyos(d, p).length > 0 ? (
+//		  findJugyos(d, p).map((j) => (
+//		    <div key={j.id}>
+//		      <b>{j.kamokus?.name}</b><br />
+//		      {j.teachers?.fname}{j.teachers?.gname}
+//		    </div>
+//		  ))
+//		) : ("-")
+//		}
+//	      })
+//	      }
+//            </tr>
+//          ))}
+//        </tbody>
+//      </table>
+//    </div>
+//  );
+//}

@@ -1,0 +1,28 @@
+import { Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+
+export default function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data.user) {
+        const { data: admin } = await supabase
+          .from("admins")
+          .select("email")
+          .eq("email", data.user.email)
+          .single();
+        setAuthorized(!!admin);
+      }
+      setLoading(false);
+    };
+    checkUser();
+  }, []);
+
+  if (loading) return <p>認証確認中...</p>;
+  if (!authorized) return <Navigate to="/" replace />;
+  return children;
+}
