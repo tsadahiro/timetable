@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -56,7 +56,7 @@ export default function JugyoManager({year}:{year:number}) {
     //  .select("*")
     //  .order("id");
     if (error) console.error(error);
-    else setJugyos(data || []);
+    else setJugyos((data || []) as any);
   };
 
   useEffect(() => {
@@ -119,14 +119,14 @@ export default function JugyoManager({year}:{year:number}) {
             <TableRow key={j.id}>
               <TableCell>{j.id}</TableCell>
               <TableCell>{j.year}</TableCell>
-              <TableCell>{j.terms ? j.terms.name : ""}</TableCell>
+              <TableCell>{(j as any).terms ? (j as any).terms.name : ""}</TableCell>
 	      <TableCell>
-		{j.teachers ? `${j.teachers.fname} ${j.teachers.gname}` : ""}
+		{(j as any).teachers ? `${(j as any).teachers.fname} ${(j as any).teachers.gname}` : ""}
 	      </TableCell>
 	      <TableCell>
-		{j.kamokus ? j.kamokus.name : ""}
+		{(j as any).kamokus ? (j as any).kamokus.name : ""}
 	      </TableCell>
-              <TableCell>{j.wdays.name}</TableCell>
+              <TableCell>{(j as any).wdays.name}</TableCell>
               <TableCell>{j.period}</TableCell>
               <TableCell>{j.exception ? "例外" : ""}</TableCell>
               <TableCell align="right">

@@ -25,7 +25,7 @@ export default function AvailableSlots({ level, year, term }: { level: number; y
       for (const p of periods) {
 	// 禁止ルールに該当するか？
 	const forb = forbiddens?.some(
-	  (f) => f.wdays?.name === d && f.period === p && f.terms?.name === "通年" && f.level === level && f.sentaku
+	  (f) => (f as any).wdays?.name === d && f.period === p && (f as any).terms?.name === "通年" && f.level === level && f.sentaku
 	  //(f) =>
           //  f.wdays?.name === d &&
           //     f.period === p &&
@@ -37,11 +37,11 @@ export default function AvailableSlots({ level, year, term }: { level: number; y
 	// 同学年の必修or選択必修がすでに入っていないか？
 	const taken = jugyos?.some(
 	  (j) =>
-            j.wdays?.name === d &&
-               j.period === p &&
-               j.terms?.name === term &&
-               j.kamokus?.level === level &&
-               (j.kamokus?.hisshu )
+            (j as any).wdays?.name === d &&
+               (j as any).period === p &&
+               (j as any).terms?.name === term &&
+               (j as any).kamokus?.level === level &&
+               ((j as any).kamokus?.hisshu )
                //(j.kamokus?.hisshu || j.kamokus?.sentakuhi)
 	);
 
@@ -50,10 +50,10 @@ export default function AvailableSlots({ level, year, term }: { level: number; y
 	  level === 3 &&
 	  jugyos?.some(
             (j) =>
-              j.wdays?.name === d &&
-		 j.period === p &&
-		 j.terms?.name === term &&
-		 j.kamokus?.sentakuhi === true
+              (j as any).wdays?.name === d &&
+		 (j as any).period === p &&
+		 (j as any).terms?.name === term &&
+		 (j as any).kamokus?.sentakuhi === true
 	  );
 
 	// 状態を判定
