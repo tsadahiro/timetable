@@ -7,6 +7,7 @@ export default function LoginPage() {
       provider: "google",
       options: {
 	redirectTo: "https://timetable-neon.vercel.app/timetable",
+	//redirectTo: "http://localhost:5173/timetable",
       },
     });
   };

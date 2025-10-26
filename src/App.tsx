@@ -11,7 +11,7 @@ import ProtectedRoute from "./pages/ProtectedRoute";
 
 export default function App() {
   //const [showAvailable, setShowAvailable] = useState(false);
-  //const terms = ["通年","第１","第３","第４","第２"]
+  const terms = ["通年","第１","第３","第４","第２"]
   return (
     <BrowserRouter>
       <Routes>
@@ -20,7 +20,7 @@ export default function App() {
 	  path="/timetable"
 	  element={
             <ProtectedRoute>
-              <Timetable year={2025} termName="第１" />
+              {terms.map((term) => <Timetable key={"timetable"+2006+"-"+term}year={2026} termName={term} />)}
             </ProtectedRoute>
 	  }
 	/>
