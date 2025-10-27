@@ -24,7 +24,7 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
   const days = ["月", "火", "水", "木", "金"];
   const periods = [1, 2, 3, 4, 5];
 
-
+  const levelcolor = ["red","red","orange","green","blue","purple"]
   // 指定曜日・時限にあるすべての授業を取得
   const jugyosAt = (wdayIndex: number, period: number) =>
     jugyos.filter((j:any) => j.wday_id === wdayIndex + 1 && j.period === period && j.terms.name === termName);
@@ -107,11 +107,11 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
                         >
                           <Typography
                             variant="body2"
-                            sx={{ fontWeight: 500, lineHeight: 1.2 }}
+                            sx={{ fontWeight: 500, lineHeight: 1.2, color: levelcolor[j.kamokus?.level] }}
                           >
                             {j.kamokus?.name}
                             {j.teachers
-                              ? `${j.teachers.fname}`
+                              ? ` ${j.teachers.fname}`
                               : ""}
                           </Typography>
                         </Box>
