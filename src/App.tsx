@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState} from "react";
 import { supabase } from "./lib/supabaseClient";
 //import AvailableSlots from "./components/AvailableSlots";
 //import JugyoManager from "./components/JugyoManager"
@@ -18,7 +18,8 @@ export default function App() {
   const terms = ["第１","第３","第４","通年","第２"]
   const [tab, setTab] = useState(0);
   const [jugyos, setJugyos] = useState<any[]>([]);
-  const [year, setYear] = useState<number>(2026);
+  //const [year, setYear] = useState<number>(2026);
+  const year = 2026;
 
   const fetchJugyos = async () => {
     const { data, error } = await supabase
@@ -30,19 +31,19 @@ export default function App() {
     else {
       const sortedJugyos = (data || []).slice().sort((a, b) => {
 	// 1. level（昇順）
-	if (a.kamokus.level !== b.kamokus.level) {
-	  return a.kamokus.level - b.kamokus.level;
+	if ((a as any).kamokus.level !== (b as any).kamokus.level) {
+	  return (a as any).kamokus.level - (b as any).kamokus.level;
 	}
 
 	// 2. hisshu（true を上位）
-	const ha = !!a.kamokus?.hisshu;
-	const hb = !!b.kamokus?.hisshu;
+	const ha = !!(a as any).kamokus?.hisshu;
+	const hb = !!(b as any).kamokus?.hisshu;
 	if (ha !== hb) {
 	  return ha ? -1 : 1;
 	}
 	
 	// 3. id（昇順）
-	return a.kamokus.id - b.kamokus.id;
+	return (a as any).kamokus.id - (b as any).kamokus.id;
       });
       setJugyos(sortedJugyos);
     }

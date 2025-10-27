@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import {  useState } from "react";
 import {
   Box,
   Typography,
@@ -10,7 +10,7 @@ import {
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-import { supabase } from "../lib/supabaseClient";
+//import { supabase } from "../lib/supabaseClient";
 import JugyoEditDialog from "./JugyoEditDialog"; 
 
 type Jugyo = {
@@ -60,7 +60,7 @@ export default function JugyoManager({jugyos,fetchJugyos}:{jugyos:any, fetchJugy
         </TableHead>
 
         <TableBody>
-          {jugyos.map((j) => (
+          {jugyos.map((j:any) => (
             <TableRow key={j.id}>
               <TableCell>{j.id}</TableCell>
               <TableCell>{j.year}</TableCell>

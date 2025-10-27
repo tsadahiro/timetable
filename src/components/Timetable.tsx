@@ -8,7 +8,7 @@ import {
   TableBody,
   Typography,
 } from "@mui/material";
-import { supabase } from "../lib/supabaseClient";
+//import { supabase } from "../lib/supabaseClient";
 import JugyoEditDialog from "./JugyoEditDialog";
 
 type TimetableProps = {
@@ -27,7 +27,7 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
 
   // 指定曜日・時限にあるすべての授業を取得
   const jugyosAt = (wdayIndex: number, period: number) =>
-    jugyos.filter((j) => j.wday_id === wdayIndex + 1 && j.period === period && j.terms.name === termName);
+    jugyos.filter((j:any) => j.wday_id === wdayIndex + 1 && j.period === period && j.terms.name === termName);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -89,7 +89,7 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
                         -
                       </Typography>
                     ) : (
-                      js.map((j) => (
+                      js.map((j:any) => (
                         <Box
                           key={j.id}
                           onClick={() => {
