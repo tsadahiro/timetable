@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }: { children: any }) {
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
-    const allowedDomains = ["yourdomain.ac.jp"]; // ← 許可ドメインをここに設定
+    const allowedDomains = ["tsuda.ac.jp"]; // ← 許可ドメインをここに設定
 
     const checkDomain = async (email: string) => {
       const domain = email.split("@")[1] || "";
