@@ -1,48 +1,94 @@
-import {  useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
   Table,
-  TableBody,
-  TableCell,
   TableHead,
   TableRow,
+  TableCell,
+  TableBody,
   IconButton,
+  Button,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
-//import { supabase } from "../lib/supabaseClient";
-import JugyoEditDialog from "./JugyoEditDialog"; 
+import AddIcon from "@mui/icons-material/Add";
+import { supabase } from "../lib/supabaseClient";
+import JugyoEditDialog from "./JugyoEditDialog";
 
 type Jugyo = {
-  id: number;
+  id?: number;
   year: number;
   term_id: number;
   teacher_id: number;
   kamoku_id: number;
   wday_id: number;
   period: number;
-  excercise: boolean;
-  exception: boolean;
+  excercise?: boolean;
+  exception?: boolean;
   notes?: string;
   comment?: string;
   kaisuu?: number;
 };
 
-export default function JugyoManager({jugyos,fetchJugyos}:{jugyos:any, fetchJugyos:any}) {
+export default function JugyoManager({
+  jugyos,
+  fetchJugyos,
+}: {
+  jugyos: any[];
+  fetchJugyos: () => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   const [selectedJugyo, setSelectedJugyo] = useState<Jugyo | null>(null);
+  const [isNew, setIsNew] = useState(false);
 
-  // 🔹 編集ダイアログを開く
   const handleEdit = (jugyo: Jugyo) => {
     setSelectedJugyo(jugyo);
+    setIsNew(false);
     setOpen(true);
+  };
+
+  const handleNew = () => {
+    setSelectedJugyo({
+      year: new Date().getFullYear(),
+      term_id: 1,
+      teacher_id: 0,
+      kamoku_id: 0,
+      wday_id: 1,
+      period: 1,
+      excercise: false,
+      exception: false,
+    });
+    setIsNew(true);
+    setOpen(true);
+  };
+
+  const handleSave = async (updated: Jugyo) => {
+    if (isNew) {
+      const { error } = await supabase.from("jugyos").insert(updated);
+      if (error) console.error(error);
+    } else if (updated.id) {
+      const { error } = await supabase
+        .from("jugyos")
+        .update(updated)
+        .eq("id", updated.id);
+      if (error) console.error(error);
+    }
+    setOpen(false);
+    fetchJugyos();
   };
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        授業一覧
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <Typography variant="h5">授業一覧</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleNew}
+        >
+          新規作成
+        </Button>
+      </Box>
 
       <Table size="small">
         <TableHead>
@@ -58,20 +104,19 @@ export default function JugyoManager({jugyos,fetchJugyos}:{jugyos:any, fetchJugy
             <TableCell align="right">操作</TableCell>
           </TableRow>
         </TableHead>
-
         <TableBody>
-          {jugyos.map((j:any) => (
+          {jugyos.map((j) => (
             <TableRow key={j.id}>
               <TableCell>{j.id}</TableCell>
               <TableCell>{j.year}</TableCell>
-              <TableCell>{(j as any).terms?.name ?? ""}</TableCell>
+              <TableCell>{j.terms?.name ?? ""}</TableCell>
               <TableCell>
-                {(j as any).teachers
-                  ? `${(j as any).teachers.fname} ${(j as any).teachers.gname}`
+                {j.teachers
+                  ? `${j.teachers.fname} ${j.teachers.gname}`
                   : ""}
               </TableCell>
-              <TableCell>{(j as any).kamokus?.name ?? ""}</TableCell>
-              <TableCell>{(j as any).wdays?.name ?? ""}</TableCell>
+              <TableCell>{j.kamokus?.name ?? ""}</TableCell>
+              <TableCell>{j.wdays?.name ?? ""}</TableCell>
               <TableCell>{j.period}</TableCell>
               <TableCell>{j.exception ? "例外" : ""}</TableCell>
               <TableCell align="right">
@@ -84,16 +129,116 @@ export default function JugyoManager({jugyos,fetchJugyos}:{jugyos:any, fetchJugy
         </TableBody>
       </Table>
 
-      {/* 🔹 編集＆削除対応版 JugyoEditDialog */}
-      <JugyoEditDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        jugyo={selectedJugyo}
-        onSaved={fetchJugyos}
-      />
+      {open && (
+        <JugyoEditDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          jugyo={selectedJugyo}
+          onSaved={handleSave}
+          isNew={isNew}
+        />
+      )}
     </Box>
   );
 }
+//import {  useState } from "react";
+//import {
+//  Box,
+//  Typography,
+//  Table,
+//  TableBody,
+//  TableCell,
+//  TableHead,
+//  TableRow,
+//  IconButton,
+//} from "@mui/material";
+//import EditIcon from "@mui/icons-material/Edit";
+////import { supabase } from "../lib/supabaseClient";
+//import JugyoEditDialog from "./JugyoEditDialog"; 
+//
+//type Jugyo = {
+//  id: number;
+//  year: number;
+//  term_id: number;
+//  teacher_id: number;
+//  kamoku_id: number;
+//  wday_id: number;
+//  period: number;
+//  excercise: boolean;
+//  exception: boolean;
+//  notes?: string;
+//  comment?: string;
+//  kaisuu?: number;
+//};
+//
+//export default function JugyoManager({jugyos,fetchJugyos}:{jugyos:any, fetchJugyos:any}) {
+//  const [open, setOpen] = useState(false);
+//  const [selectedJugyo, setSelectedJugyo] = useState<Jugyo | null>(null);
+//
+//  // 🔹 編集ダイアログを開く
+//  const handleEdit = (jugyo: Jugyo) => {
+//    setSelectedJugyo(jugyo);
+//    setOpen(true);
+//  };
+//
+//  return (
+//    <Box sx={{ p: 3 }}>
+//      <Typography variant="h5" gutterBottom>
+//        授業一覧
+//      </Typography>
+//
+//      <Table size="small">
+//        <TableHead>
+//          <TableRow>
+//            <TableCell>ID</TableCell>
+//            <TableCell>年度</TableCell>
+//            <TableCell>学期</TableCell>
+//            <TableCell>教員</TableCell>
+//            <TableCell>科目</TableCell>
+//            <TableCell>曜日</TableCell>
+//            <TableCell>時限</TableCell>
+//            <TableCell>例外</TableCell>
+//            <TableCell align="right">操作</TableCell>
+//          </TableRow>
+//        </TableHead>
+//
+//        <TableBody>
+//          {jugyos.map((j:any) => (
+//            <TableRow key={j.id}>
+//              <TableCell>{j.id}</TableCell>
+//              <TableCell>{j.year}</TableCell>
+//              <TableCell>{(j as any).terms?.name ?? ""}</TableCell>
+//              <TableCell>
+//                {(j as any).teachers
+//                  ? `${(j as any).teachers.fname} ${(j as any).teachers.gname}`
+//                  : ""}
+//              </TableCell>
+//              <TableCell>{(j as any).kamokus?.name ?? ""}</TableCell>
+//              <TableCell>{(j as any).wdays?.name ?? ""}</TableCell>
+//              <TableCell>{j.period}</TableCell>
+//              <TableCell>{j.exception ? "例外" : ""}</TableCell>
+//              <TableCell align="right">
+//                <IconButton size="small" onClick={() => handleEdit(j)}>
+//                  <EditIcon fontSize="small" />
+//                </IconButton>
+//              </TableCell>
+//            </TableRow>
+//          ))}
+//        </TableBody>
+//      </Table>
+//
+//      {/* 🔹 編集＆削除対応版 JugyoEditDialog */}
+//      <JugyoEditDialog
+//        open={open}
+//        onClose={() => setOpen(false)}
+//        jugyo={selectedJugyo}
+//        onSaved={fetchJugyos}
+//      />
+//    </Box>
+//  );
+//}
+
+
 //import { useEffect, useState } from "react";
 //import {
 //  Box,
