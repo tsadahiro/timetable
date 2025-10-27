@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Table,
@@ -12,33 +12,18 @@ import { supabase } from "../lib/supabaseClient";
 import JugyoEditDialog from "./JugyoEditDialog";
 
 type TimetableProps = {
+  jugyos: any;
+  fetchJugyos: any;
   year: number;
   termName: string;
 };
-export default function Timetable({year, termName}:TimetableProps) {
-  const [jugyos, setJugyos] = useState<any[]>([]);
+export default function Timetable({jugyos, fetchJugyos,  year, termName}:TimetableProps) {
   const [selectedJugyo, setSelectedJugyo] = useState<any>(null);
   const [open, setOpen] = useState(false);
 
   const days = ["月", "火", "水", "木", "金"];
   const periods = [1, 2, 3, 4, 5];
 
-  const fetchJugyos = async () => {
-    const { data, error } = await supabase
-      .from("jugyos")
-      .select(`
-        id, year, term_id, wday_id, period, exception,
-        teachers ( fname, gname ),
-        kamokus ( name, level ),
-        terms (name)
-      `)
-      .eq("year", 2025)
-    if (!error) setJugyos(data || []);
-  };
-
-  useEffect(() => {
-    fetchJugyos();
-  }, []);
 
   // 指定曜日・時限にあるすべての授業を取得
   const jugyosAt = (wdayIndex: number, period: number) =>
