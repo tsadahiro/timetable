@@ -1,0 +1,232 @@
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+  TextField,
+} from "@mui/material";
+import { supabase } from "../lib/supabaseClient";
+
+type Teacher = {
+  id: number;
+  fname: string;   // 姓
+  gname: string;   // 名
+  yomi: string;    // 姓のよみ（ソート用）
+  jyokin: boolean; // 常勤フラグ
+};
+
+type Jugyo = {
+  id: number;
+  year: number;
+  period: number;
+  wdays: { name: string };
+  kamokus: { name: string };
+};
+
+export default function TeacherManager({ year }: { year: number }) {
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [jugyos, setJugyos] = useState<Jugyo[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newTeacher, setNewTeacher] = useState({
+    fname: "",
+    gname: "",
+    yomi: "",
+    jyokin: true,
+  });
+
+  // 🔹 教員リスト取得
+  const fetchTeachers = async () => {
+    const { data, error } = await supabase
+      .from("teachers")
+      .select("*")
+      .order("jyokin", { ascending: false }) // 常勤(true)→非常勤(false)
+      .order("yomi", { ascending: true });
+    if (error) console.error(error);
+    else setTeachers(data || []);
+  };
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  // 🔹 教員クリック時：担当授業を取得
+  const handleOpenTeacher = async (teacher: Teacher) => {
+    setSelectedTeacher(teacher);
+    const { data, error } = await supabase
+      .from("jugyos")
+      .select("id, year, period, wdays(name), kamokus(name)")
+      .eq("teacher_id", teacher.id)
+      .eq("year", year)
+      .order("wday_id", { ascending: true })
+      .order("period", { ascending: true });
+
+    if (error) console.error(error);
+    else setJugyos(data || []);
+
+    setOpenDialog(true);
+  };
+
+  // 🔹 教員追加
+  const handleAddTeacher = async () => {
+    const { error } = await supabase.from("teachers").insert([newTeacher]);
+    if (error) {
+      alert("登録に失敗しました");
+      console.error(error);
+      return;
+    }
+    setAddOpen(false);
+    setNewTeacher({ fname: "", gname: "", yomi: "", jyokin: true });
+    fetchTeachers();
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom>
+        教員一覧
+      </Typography>
+
+      {/* 新規追加ボタン */}
+      <Box sx={{ mb: 2 }}>
+        <Button variant="contained" onClick={() => setAddOpen(true)}>
+          新規追加
+        </Button>
+      </Box>
+
+      {/* 教員一覧テーブル */}
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>ID</TableCell>
+            <TableCell>氏名</TableCell>
+            <TableCell>よみ</TableCell>
+            <TableCell>常勤</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {teachers.map((t) => (
+            <TableRow
+              key={t.id}
+              hover
+              sx={{ cursor: "pointer" }}
+              onClick={() => handleOpenTeacher(t)}
+            >
+              <TableCell>{t.id}</TableCell>
+              <TableCell>{`${t.fname} ${t.gname}`}</TableCell>
+              <TableCell>{t.yomi}</TableCell>
+              <TableCell>{t.jyokin ? "常勤" : "非常勤"}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* 担当授業ダイアログ */}
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {selectedTeacher
+            ? `${selectedTeacher.fname} ${selectedTeacher.gname} の担当授業（${year}年度）`
+            : "担当授業"}
+        </DialogTitle>
+        <DialogContent dividers>
+          {jugyos.length === 0 ? (
+            <Typography>該当授業なし</Typography>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>科目</TableCell>
+                  <TableCell>曜日</TableCell>
+                  <TableCell>時限</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {jugyos.map((j) => (
+                  <TableRow key={j.id}>
+                    <TableCell>{j.kamokus.name}</TableCell>
+                    <TableCell>{j.wdays.name}</TableCell>
+                    <TableCell>{j.period}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 教員追加ダイアログ */}
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)}>
+        <DialogTitle>新規教員の登録</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="姓"
+            fullWidth
+            value={newTeacher.fname}
+            onChange={(e) =>
+              setNewTeacher({ ...newTeacher, fname: e.target.value })
+            }
+          />
+          <TextField
+            margin="dense"
+            label="名"
+            fullWidth
+            value={newTeacher.gname}
+            onChange={(e) =>
+              setNewTeacher({ ...newTeacher, gname: e.target.value })
+            }
+          />
+          <TextField
+            margin="dense"
+            label="よみ（姓）"
+            fullWidth
+            value={newTeacher.yomi}
+            onChange={(e) =>
+              setNewTeacher({ ...newTeacher, yomi: e.target.value })
+            }
+          />
+          <TextField
+            select
+            margin="dense"
+            label="常勤 / 非常勤"
+            fullWidth
+            value={newTeacher.jyokin ? "true" : "false"}
+            onChange={(e) =>
+              setNewTeacher({
+                ...newTeacher,
+                jyokin: e.target.value === "true",
+              })
+            }
+            SelectProps={{ native: true }}
+          >
+            <option value="true">常勤</option>
+            <option value="false">非常勤</option>
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddOpen(false)}>キャンセル</Button>
+          <Button variant="contained" onClick={handleAddTeacher}>
+            登録
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}

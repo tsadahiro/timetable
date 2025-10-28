@@ -169,9 +169,18 @@ export default function JugyoEditDialog({
           </Button>
         )}
         <Button onClick={onClose}>キャンセル</Button>
-        <Button variant="contained" onClick={() => onSaved(current)}>
+	<Button
+	  variant="contained"
+	  onClick={async () => {
+	    await onSaved(current);  // 親に保存を依頼
+	    onClose();               // 保存完了後に確実に閉じる
+	  }}
+	>
+	  {isNew ? "作成" : "保存"}
+	</Button>
+	{/*<Button variant="contained" onClick={() => onSaved(current)}>
           {isNew ? "作成" : "保存"}
-        </Button>
+        </Button>*/}
       </DialogActions>
     </Dialog>
   );

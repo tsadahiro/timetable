@@ -62,20 +62,43 @@ export default function JugyoManager({
     setOpen(true);
   };
 
-  const handleSave = async (updated: Jugyo) => {
+  const handleSave = async (jugyo: any) => {
+    // jugyosテーブルに存在する列だけを抽出
+    const cleanData = {
+      year: jugyo.year,
+      term_id: jugyo.term_id,
+      teacher_id: jugyo.teacher_id,
+      kamoku_id: jugyo.kamoku_id,
+      wday_id: jugyo.wday_id,
+      period: jugyo.period,
+      excercise: jugyo.excercise ?? false,
+      exception: jugyo.exception ?? false,
+      notes: jugyo.notes ?? null,
+      comment: jugyo.comment ?? null,
+      kaisuu: jugyo.kaisuu ?? null,
+    };
+
     if (isNew) {
-      const { error } = await supabase.from("jugyos").insert(updated);
-      if (error) console.error(error);
-    } else if (updated.id) {
+      const { error } = await supabase.from("jugyos").insert(cleanData);
+      if (error) {
+	console.error("insert error", error);
+	alert("保存に失敗しました");
+	return;
+      }
+    } else if (jugyo.id) {
       const { error } = await supabase
-        .from("jugyos")
-        .update(updated)
-        .eq("id", updated.id);
-      if (error) console.error(error);
+	.from("jugyos")
+	.update(cleanData)
+	.eq("id", jugyo.id);
+      if (error) {
+	console.error("update error", error);
+	alert("更新に失敗しました");
+	return;
+      }
     }
-    setOpen(false);
-    fetchJugyos();
+    await fetchJugyos();
   };
+
 
   return (
     <Box sx={{ p: 3 }}>

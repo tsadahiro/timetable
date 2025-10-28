@@ -10,7 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import KamokuManager from "./components/KamokuManager"
 import AvailableSlots from "./components/AvailableSlots"
-
+import TeacherManager from "./components/TeacherManager"
 
 
 export default function App() {
@@ -81,6 +81,7 @@ export default function App() {
 		  <Tab label="時間割" />
 		  <Tab label="科目" />
 		  <Tab label="禁則表" />
+		  <Tab label="教員" />
 		</Tabs>
 
 		<Box sx={{ mt: 2 }}>
@@ -92,6 +93,7 @@ export default function App() {
 	    }
 	    {tab === 2 && <KamokuManager/>}
 	    {tab === 3 && availables}
+	    {tab === 4 && <TeacherManager year={year}/>}
 	    </Box>
 	    </Box>
 	    {}
