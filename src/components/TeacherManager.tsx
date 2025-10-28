@@ -34,6 +34,7 @@ type Jugyo = {
   id: number;
   year: number;
   period: number;
+  kaisuu: number;
   wdays: { name: string };
   kamokus: { name: string };
 };
@@ -76,20 +77,27 @@ export default function TeacherManager({ year }: { year: number }) {
     setSelectedTeacher(teacher);
     const { data, error } = await supabase
       .from("jugyos")
-      .select("id, year, period, wdays(name), kamokus(name)")
+      .select("id, year, period, wday_id, kaisuu, wdays(name), kamokus(name)")
       .eq("teacher_id", teacher.id)
       .eq("year", year)
       .order("wday_id", { ascending: true })
       .order("period", { ascending: true });
 
     if (error) console.error(error);
-    else   setJugyos(
-      (data || []).map((j: any) => ({
-	...j,
-	wdays: j.wdays?.[0] || { name: "" },     // 配列 → 先頭要素
-	kamokus: j.kamokus?.[0] || { name: "" }, // 配列 → 先頭要素
-      }))
-    );
+    else
+      setJugyos(
+	(data || []).map((j: any) => ({
+	  ...j,
+	  wdays:
+        Array.isArray(j.wdays) && j.wdays.length > 0
+						 ? j.wdays[0]
+						 : j.wdays || { name: "" },
+	  kamokus:
+        Array.isArray(j.kamokus) && j.kamokus.length > 0
+						     ? j.kamokus[0]
+						     : j.kamokus || { name: "" },
+	}))
+      );
     setOpenDialog(true);
   };
 
@@ -178,30 +186,41 @@ export default function TeacherManager({ year }: { year: number }) {
             ? `${selectedTeacher.fname} ${selectedTeacher.gname} の担当授業（${year}年度）`
             : "担当授業"}
         </DialogTitle>
-        <DialogContent dividers>
-          {jugyos.length === 0 ? (
-            <Typography>該当授業なし</Typography>
-          ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>科目</TableCell>
-                  <TableCell>曜日</TableCell>
-                  <TableCell>時限</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {jugyos.map((j) => (
-                  <TableRow key={j.id}>
-                    <TableCell>{j.kamokus.name}</TableCell>
-                    <TableCell>{j.wdays.name}</TableCell>
-                    <TableCell>{j.period}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
+	<DialogContent dividers>
+	  {jugyos.length === 0 ? (
+	    <Typography>該当授業なし</Typography>
+	  ) : (
+	    <>
+	      <Table size="small">
+		<TableHead>
+		  <TableRow>
+		    <TableCell>科目</TableCell>
+		    <TableCell>曜日</TableCell>
+		    <TableCell>時限</TableCell>
+		    <TableCell align="right">回数</TableCell>
+		  </TableRow>
+		</TableHead>
+		<TableBody>
+		  {jugyos.map((j) => (
+		    <TableRow key={j.id}>
+		      <TableCell>{j.kamokus?.name}</TableCell>
+		      <TableCell>{j.wdays?.name}</TableCell>
+		      <TableCell>{j.period}</TableCell>
+		      <TableCell align="right">{j.kaisuu ?? "-"}</TableCell>
+		    </TableRow>
+		  ))}
+		</TableBody>
+	      </Table>
+
+	      <Typography sx={{ mt: 2, textAlign: "right" }}>
+		合計回数：
+		<strong>
+		  {jugyos.reduce((sum, j) => sum + (j.kaisuu || 0), 0)}
+		</strong>
+	      </Typography>
+	    </>
+	  )}
+	</DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDialog(false)}>閉じる</Button>
         </DialogActions>
