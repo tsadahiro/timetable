@@ -24,7 +24,7 @@ export default function App() {
   const fetchJugyos = async () => {
     const { data, error } = await supabase
       .from("jugyos")
-      .select(`id, year, term_id, wday_id, period, exception,  teachers ( id, fname, gname ),kamokus ( id, name,level ), terms (id, name), wdays (id, name)`)
+      .select(`id, year, term_id, wday_id, period, exception, kaisuu, teachers ( id, fname, gname ),kamokus ( id, name,level ), terms (id, name), wdays (id, name)`)
       .eq("year",year)
       .order("term_id")
     if (error) console.error(error);

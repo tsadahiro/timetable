@@ -63,7 +63,6 @@ export default function TeacherManager({ year }: { year: number }) {
       .order("joukin", { ascending: false }) // 常勤 → 非常勤
       .order("fyomi", { ascending: true }) // 姓のよみ順
       .order("gyomi", { ascending: true }); // 名のよみ順
-
     if (error) console.error(error);
     else setTeachers(data || []);
   };
@@ -77,7 +76,7 @@ export default function TeacherManager({ year }: { year: number }) {
     setSelectedTeacher(teacher);
     const { data, error } = await supabase
       .from("jugyos")
-      .select("id, year, period, wday_id, kaisuu, wdays(name), kamokus(name)")
+      .select("id, year, period, wday_id, kaisuu, wdays(name), kamokus(name, level)")
       .eq("teacher_id", teacher.id)
       .eq("year", year)
       .order("wday_id", { ascending: true })
@@ -96,7 +95,7 @@ export default function TeacherManager({ year }: { year: number }) {
         Array.isArray(j.kamokus) && j.kamokus.length > 0
 						     ? j.kamokus[0]
 						     : j.kamokus || { name: "" },
-	}))
+	})).sort((a, b) => (a.kamokus?.level ?? 0) - (b.kamokus?.level ?? 0))
       );
     setOpenDialog(true);
   };

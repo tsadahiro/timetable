@@ -160,6 +160,16 @@ export default function JugyoEditDialog({
             setCurrent({ ...current, period: Number(e.target.value) })
           }
         />
+	<TextField
+	  margin="dense"
+	  label="回数"
+	  type="number"
+	  fullWidth
+	  value={current.kaisuu ?? "9"}
+	  onChange={(e) =>
+	    setCurrent({ ...current, kaisuu: Number(e.target.value) })
+	  }
+	/>	
       </DialogContent>
 
       <DialogActions>

@@ -8,7 +8,7 @@ import {
   TableBody,
   Typography,
 } from "@mui/material";
-//import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import JugyoEditDialog from "./JugyoEditDialog";
 
 type TimetableProps = {
@@ -29,6 +29,31 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
   const jugyosAt = (wdayIndex: number, period: number) =>
     jugyos.filter((j:any) => j.wday_id === wdayIndex + 1 && j.period === period && j.terms.name === termName);
 
+
+  const handleSave = async (jugyo: any) => {
+    const data = {
+      year: jugyo.year,
+      term_id: jugyo.term_id,
+      teacher_id: jugyo.teacher_id,
+      kamoku_id: jugyo.kamoku_id,
+      wday_id: jugyo.wday_id,
+      period: jugyo.period,
+      excercise: jugyo.excercise ?? false,
+      exception: jugyo.exception ?? false,
+      notes: jugyo.notes ?? null,
+      comment: jugyo.comment ?? null,
+      kaisuu: jugyo.kaisuu ?? null,
+    };
+
+    if (jugyo.id) {
+      await supabase.from("jugyos").update(data).eq("id", jugyo.id);
+    } else {
+      await supabase.from("jugyos").insert(data);
+    }
+    await fetchJugyos(); // 保存後に再取得
+  };
+  
+  
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
@@ -130,7 +155,7 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
         open={open}
         onClose={() => setOpen(false)}
         jugyo={selectedJugyo}
-        onSaved={fetchJugyos}
+        onSaved={handleSave}
       />
     </Box>
   );
