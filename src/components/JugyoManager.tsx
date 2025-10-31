@@ -62,7 +62,16 @@ export default function JugyoManager({
     setOpen(true);
   };
 
-  const handleSave = async (jugyo: any) => {
+  const handleSave = async (jugyo: any, deleted = false) => {
+    
+    if (deleted) {
+      // 削除完了時：再取得のみ実行して安全に抜ける
+      await fetchJugyos();
+      return;
+    }
+
+    if (!jugyo) return; // 念のための安全ガード
+    
     // jugyosテーブルに存在する列だけを抽出
     const cleanData = {
       year: jugyo.year,
@@ -153,10 +162,13 @@ export default function JugyoManager({
         </TableBody>
       </Table>
 
-      {open && (
+      {open && selectedJugyo && (
         <JugyoEditDialog
           open={open}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+	    setOpen(false)
+	    setSelectedJugyo(null);
+	  }}
           jugyo={selectedJugyo}
           onSaved={handleSave}
           isNew={isNew}

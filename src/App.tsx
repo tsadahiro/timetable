@@ -11,7 +11,8 @@ import ProtectedRoute from "./pages/ProtectedRoute";
 import KamokuManager from "./components/KamokuManager"
 import AvailableSlots from "./components/AvailableSlots"
 import TeacherManager from "./components/TeacherManager"
-
+//import TermDaysManager from "./components/TermDaysManager.tsx"
+import TermManagerPage from "./components/TermManagerPage.tsx"
 
 export default function App() {
   //const [showAvailable, setShowAvailable] = useState(false);
@@ -82,6 +83,7 @@ export default function App() {
 		  <Tab label="科目" />
 		  <Tab label="禁則表" />
 		  <Tab label="教員" />
+		  <Tab label="ターム" />
 		</Tabs>
 
 		<Box sx={{ mt: 2 }}>
@@ -94,6 +96,7 @@ export default function App() {
 	    {tab === 2 && <KamokuManager/>}
 	    {tab === 3 && availables}
 	    {tab === 4 && <TeacherManager year={year}/>}
+	    {tab === 5 && <TermManagerPage />}
 	    </Box>
 	    </Box>
 	    {}

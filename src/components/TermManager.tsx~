@@ -1,0 +1,251 @@
+import React, { useState, useEffect } from "react";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  MenuItem,
+  Typography,
+  Box,
+  IconButton,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { supabase } from "../supabaseClient";
+
+interface Term {
+  id: number;
+  name: string;
+  year: number;
+  start: string;
+  end: string;
+}
+
+interface TermDay {
+  id?: number;
+  date: string;
+  kind: "holiday" | "makeup" | "special";
+  wday_id?: number | null;
+  description?: string | null;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  term: Term | null;
+}
+
+const TermDaysManager: React.FC<Props> = ({ open, onClose, term }) => {
+  const [termDays, setTermDays] = useState<TermDay[]>([]);
+  const [newDay, setNewDay] = useState<TermDay>({
+    date: "",
+    kind: "holiday",
+    wday_id: null,
+    description: "",
+  });
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+
+  // 学期が変わったら term_days を読み込み
+  useEffect(() => {
+    if (term) fetchTermDays();
+  }, [term]);
+
+  const fetchTermDays = async () => {
+    if (!term) return;
+    const { data, error } = await supabase
+      .from("term_days")
+      .select("*")
+      .eq("term_id", term.id)
+      .order("date", { ascending: true });
+
+    if (error) console.error(error);
+    else setTermDays(data);
+  };
+
+  const handleAdd = async () => {
+    if (!term) return;
+
+    if (rangeMode && rangeStart && rangeEnd) {
+      // 連続期間を展開
+      const start = new Date(rangeStart);
+      const end = new Date(rangeEnd);
+      const records: TermDay[] = [];
+      const desc = newDay.description || "";
+
+      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        records.push({
+          term_id: term.id,
+          date: d.toISOString().slice(0, 10),
+          kind: newDay.kind,
+          wday_id: newDay.wday_id || null,
+          description: desc,
+        } as any);
+      }
+
+      const { error } = await supabase.from("term_days").insert(records);
+      if (error) console.error(error);
+      else await fetchTermDays();
+    } else if (newDay.date) {
+      // 単日登録
+      const { error } = await supabase.from("term_days").insert([
+        {
+          term_id: term.id,
+          ...newDay,
+        },
+      ]);
+      if (error) console.error(error);
+      else await fetchTermDays();
+    }
+
+    // フォームをリセット
+    setNewDay({ date: "", kind: "holiday", wday_id: null, description: "" });
+    setRangeStart("");
+    setRangeEnd("");
+  };
+
+  const handleDelete = async (id: number) => {
+    const ok = window.confirm("この日を削除しますか？");
+    if (!ok) return;
+    const { error } = await supabase.from("term_days").delete().eq("id", id);
+    if (error) console.error(error);
+    else await fetchTermDays();
+  };
+
+  if (!term) return null;
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>
+        補講日・休講日管理 ({term.year}年度 {term.name})
+      </DialogTitle>
+
+      <DialogContent>
+        <Typography variant="subtitle1" gutterBottom>
+          新規登録
+        </Typography>
+
+        <Box display="flex" alignItems="center" gap={2} mb={2}>
+          <TextField
+            select
+            label="種類"
+            value={newDay.kind}
+            onChange={(e) =>
+              setNewDay({ ...newDay, kind: e.target.value as TermDay["kind"] })
+            }
+            sx={{ width: 140 }}
+          >
+            <MenuItem value="holiday">休講日</MenuItem>
+            <MenuItem value="makeup">補講日</MenuItem>
+            <MenuItem value="special">特別授業</MenuItem>
+          </TextField>
+
+          <TextField
+            label="日付"
+            type="date"
+            value={newDay.date}
+            onChange={(e) => setNewDay({ ...newDay, date: e.target.value })}
+            sx={{ width: 180 }}
+            disabled={rangeMode}
+          />
+
+          <TextField
+            label="曜日ID (補講用)"
+            type="number"
+            value={newDay.wday_id ?? ""}
+            onChange={(e) =>
+              setNewDay({
+                ...newDay,
+                wday_id: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+            sx={{ width: 140 }}
+          />
+
+          <TextField
+            label="説明"
+            value={newDay.description || ""}
+            onChange={(e) =>
+              setNewDay({ ...newDay, description: e.target.value })
+            }
+            sx={{ flex: 1 }}
+          />
+        </Box>
+
+        <Box display="flex" alignItems="center" gap={2} mb={2}>
+          <Button
+            variant={rangeMode ? "contained" : "outlined"}
+            onClick={() => setRangeMode(!rangeMode)}
+          >
+            範囲指定モード {rangeMode ? "ON" : "OFF"}
+          </Button>
+
+          {rangeMode && (
+            <>
+              <TextField
+                label="開始日"
+                type="date"
+                value={rangeStart}
+                onChange={(e) => setRangeStart(e.target.value)}
+              />
+              <TextField
+                label="終了日"
+                type="date"
+                value={rangeEnd}
+                onChange={(e) => setRangeEnd(e.target.value)}
+              />
+            </>
+          )}
+
+          <Button variant="contained" onClick={handleAdd}>
+            追加
+          </Button>
+        </Box>
+
+        <Typography variant="subtitle1" gutterBottom>
+          登録済みの日付
+        </Typography>
+
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>日付</TableCell>
+              <TableCell>種類</TableCell>
+              <TableCell>曜日ID</TableCell>
+              <TableCell>説明</TableCell>
+              <TableCell>削除</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {termDays.map((d) => (
+              <TableRow key={d.id}>
+                <TableCell>{d.date}</TableCell>
+                <TableCell>{d.kind}</TableCell>
+                <TableCell>{d.wday_id ?? "-"}</TableCell>
+                <TableCell>{d.description}</TableCell>
+                <TableCell>
+                  <IconButton onClick={() => handleDelete(d.id!)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose}>閉じる</Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default TermDaysManager;

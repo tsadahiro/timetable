@@ -1,0 +1,235 @@
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Tabs,
+  Tab,
+  Typography,
+  Button,
+  TextField,
+  IconButton,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  //MenuItem,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { supabase } from "../lib/supabaseClient";
+
+interface Term {
+  id: number;
+  name: string;
+  year: number;
+  start: string;
+  end: string;
+}
+
+interface TermDay {
+  id?: number;
+  date: string;
+  kind: "holiday" | "makeup" | "special";
+  wday_id?: number | null;
+  description?: string | null;
+}
+
+interface Props {
+  term: Term | null;
+}
+
+const TermDaysManager: React.FC<Props> = ({ term }) => {
+  const [tab, setTab] = useState<"holiday" | "makeup" | "special">("holiday");
+  const [termDays, setTermDays] = useState<TermDay[]>([]);
+  const [newDay, setNewDay] = useState<TermDay>({
+    date: "",
+    kind: "holiday",
+    wday_id: null,
+    description: "",
+  });
+  const [rangeMode, setRangeMode] = useState(false);
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
+
+  useEffect(() => {
+    if (term) fetchTermDays();
+  }, [term]);
+
+  const fetchTermDays = async () => {
+    if (!term) return;
+    const { data, error } = await supabase
+      .from("term_days")
+      .select("*")
+      .eq("term_id", term.id)
+      .order("date", { ascending: true });
+
+    if (error) console.error(error);
+    else setTermDays(data);
+  };
+
+  const handleAdd = async () => {
+    if (!term) return;
+
+    const recordBase = {
+      term_id: term.id,
+      kind: tab,
+      wday_id: newDay.wday_id || null,
+      description: newDay.description || "",
+    };
+
+    if (rangeMode && rangeStart && rangeEnd) {
+      // 範囲登録
+      const start = new Date(rangeStart);
+      const end = new Date(rangeEnd);
+      const records: any[] = [];
+
+      for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+        records.push({
+          ...recordBase,
+          date: d.toISOString().slice(0, 10),
+        });
+      }
+
+      const { error } = await supabase.from("term_days").insert(records);
+      if (error) console.error(error);
+      else await fetchTermDays();
+    } else if (newDay.date) {
+      // 単日登録
+      const { error } = await supabase.from("term_days").insert([
+        { ...recordBase, date: newDay.date },
+      ]);
+      if (error) console.error(error);
+      else await fetchTermDays();
+    }
+
+    setNewDay({ date: "", kind: tab, wday_id: null, description: "" });
+    setRangeStart("");
+    setRangeEnd("");
+  };
+
+  const handleDelete = async (id: number) => {
+    const ok = window.confirm("この日を削除しますか？");
+    if (!ok) return;
+    const { error } = await supabase.from("term_days").delete().eq("id", id);
+    if (error) console.error(error);
+    else await fetchTermDays();
+  };
+
+  if (!term) {
+    return <Typography>学期を選択してください。</Typography>;
+  }
+
+  const filteredDays = termDays.filter((d) => d.kind === tab);
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        補講日・休講日管理（{term.year}年度 {term.name}）
+      </Typography>
+
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setTab(v)}
+        sx={{ mb: 2 }}
+        variant="fullWidth"
+      >
+        <Tab value="holiday" label="休講日" />
+        <Tab value="makeup" label="補講日" />
+        <Tab value="special" label="特別授業" />
+      </Tabs>
+
+      {/* 入力フォーム */}
+      <Box display="flex" alignItems="center" gap={2} mb={2}>
+        <TextField
+          label="日付"
+          type="date"
+          value={newDay.date}
+          onChange={(e) => setNewDay({ ...newDay, date: e.target.value })}
+          sx={{ width: 180 }}
+          disabled={rangeMode}
+        />
+
+        {tab === "makeup" && (
+          <TextField
+            label="曜日ID"
+            type="number"
+            value={newDay.wday_id ?? ""}
+            onChange={(e) =>
+              setNewDay({
+                ...newDay,
+                wday_id: e.target.value ? Number(e.target.value) : null,
+              })
+            }
+            sx={{ width: 120 }}
+          />
+        )}
+
+        <TextField
+          label="説明"
+          value={newDay.description || ""}
+          onChange={(e) =>
+            setNewDay({ ...newDay, description: e.target.value })
+          }
+          sx={{ flex: 1 }}
+        />
+
+        <Button
+          variant={rangeMode ? "contained" : "outlined"}
+          onClick={() => setRangeMode(!rangeMode)}
+        >
+          範囲指定 {rangeMode ? "ON" : "OFF"}
+        </Button>
+
+        {rangeMode && (
+          <>
+            <TextField
+              label="開始日"
+              type="date"
+              value={rangeStart}
+              onChange={(e) => setRangeStart(e.target.value)}
+              sx={{ width: 180 }}
+            />
+            <TextField
+              label="終了日"
+              type="date"
+              value={rangeEnd}
+              onChange={(e) => setRangeEnd(e.target.value)}
+              sx={{ width: 180 }}
+            />
+          </>
+        )}
+
+        <Button variant="contained" onClick={handleAdd}>
+          追加
+        </Button>
+      </Box>
+
+      {/* 登録済みテーブル */}
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>日付</TableCell>
+            {tab === "makeup" && <TableCell>曜日ID</TableCell>}
+            <TableCell>説明</TableCell>
+            <TableCell>削除</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filteredDays.map((d) => (
+            <TableRow key={d.id}>
+              <TableCell>{d.date}</TableCell>
+              {tab === "makeup" && <TableCell>{d.wday_id ?? "-"}</TableCell>}
+              <TableCell>{d.description}</TableCell>
+              <TableCell>
+                <IconButton onClick={() => handleDelete(d.id!)}>
+                  <DeleteIcon />
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+};
+
+export default TermDaysManager;
