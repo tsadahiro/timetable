@@ -1,0 +1,143 @@
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  Box,
+  Button,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { supabase } from "../supabaseClient";
+import TermEditDialog, { Term } from "./TermEditDialog";
+
+const TermsManager: React.FC = () => {
+  const [rows, setRows] = useState<Term[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Term | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTerms = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("terms")
+      .select("id, name, year, start, end, abbr, length")
+      .order("year", { ascending: false })
+      .order("start", { ascending: true });
+    setLoading(false);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setRows((data as Term[]) ?? []);
+  };
+
+  useEffect(() => {
+    fetchTerms();
+  }, []);
+
+  const title = useMemo(() => "学期（terms）管理", []);
+
+  const handleAdd = () => {
+    setEditing(null); // 新規
+    setOpen(true);
+  };
+
+  const handleEdit = (t: Term) => {
+    setEditing(t);
+    setOpen(true);
+  };
+
+  const handleDelete = async (t: Term) => {
+    const ok = window.confirm(
+      `${t.year ?? ""}年度 ${t.name ?? ""} を削除します。よろしいですか？（関連データに注意）`
+    );
+    if (!ok || !t.id) return;
+    const { error } = await supabase.from("terms").delete().eq("id", t.id);
+    if (error) {
+      alert("削除に失敗しました。");
+      console.error(error);
+    } else {
+      await fetchTerms();
+    }
+  };
+
+  return (
+    <Paper sx={{ p: 2 }}>
+      <Toolbar sx={{ justifyContent: "space-between", px: 0 }}>
+        <Typography variant="h6">{title}</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleAdd}
+        >
+          追加
+        </Button>
+      </Toolbar>
+
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>年度</TableCell>
+            <TableCell>名称</TableCell>
+            <TableCell>略称</TableCell>
+            <TableCell>開始日</TableCell>
+            <TableCell>終了日</TableCell>
+            <TableCell>長さ</TableCell>
+            <TableCell align="right">操作</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((t) => (
+            <TableRow key={t.id}>
+              <TableCell>{t.year ?? "-"}</TableCell>
+              <TableCell>{t.name ?? "-"}</TableCell>
+              <TableCell>{t.abbr ?? "-"}</TableCell>
+              <TableCell>{t.start ?? "-"}</TableCell>
+              <TableCell>{t.end ?? "-"}</TableCell>
+              <TableCell>{t.length ?? "-"}</TableCell>
+              <TableCell align="right">
+                <Box display="flex" gap={1} justifyContent="flex-end">
+                  <IconButton size="small" onClick={() => handleEdit(t)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => handleDelete(t)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ))}
+          {(!rows || rows.length === 0) && !loading && (
+            <TableRow>
+              <TableCell colSpan={7}>
+                <Typography color="text.secondary">
+                  学期データがありません。「追加」から作成してください。
+                </Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+
+      <TermEditDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        term={editing}
+        onSaved={async () => {
+          setOpen(false);
+          await fetchTerms();
+        }}
+      />
+    </Paper>
+  );
+};
+
+export default TermsManager;

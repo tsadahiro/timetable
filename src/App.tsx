@@ -11,8 +11,10 @@ import ProtectedRoute from "./pages/ProtectedRoute";
 import KamokuManager from "./components/KamokuManager"
 import AvailableSlots from "./components/AvailableSlots"
 import TeacherManager from "./components/TeacherManager"
+import TermsView from "./components/TermsView"
 //import TermDaysManager from "./components/TermDaysManager.tsx"
-import TermManagerPage from "./components/TermManagerPage.tsx"
+//import TermManagerPage from "./components/TermManagerPage.tsx"
+//import TermsManager from "./components/TermsManager.tsx"
 
 export default function App() {
   //const [showAvailable, setShowAvailable] = useState(false);
@@ -87,19 +89,19 @@ export default function App() {
 		</Tabs>
 
 		<Box sx={{ mt: 2 }}>
-	    {tab === 0 && <JugyoManager jugyos={jugyos} fetchJugyos={fetchJugyos}/>}
-	    {tab === 1 &&
-	     terms.map((term) => <Timetable
-				   jugyos={jugyos} fetchJugyos={fetchJugyos}
-				   key={"timetable"+2006+"-"+term} year={year} termName={term} />)
-	    }
-	    {tab === 2 && <KamokuManager/>}
-	    {tab === 3 && availables}
-	    {tab === 4 && <TeacherManager year={year}/>}
-	    {tab === 5 && <TermManagerPage />}
-	    </Box>
-	    </Box>
-	    {}
+		  {tab === 0 && <JugyoManager jugyos={jugyos} fetchJugyos={fetchJugyos}/>}
+		  {tab === 1 &&
+		   terms.map((term) => <Timetable
+					 jugyos={jugyos} fetchJugyos={fetchJugyos}
+					 key={"timetable"+2006+"-"+term} year={year} termName={term} />)
+		  }
+		  {tab === 2 && <KamokuManager/>}
+		  {tab === 3 && availables}
+		  {tab === 4 && <TeacherManager year={year}/>}
+		  {tab === 5 && <TermsView />}
+		</Box>
+	      </Box>
+	      {}
             </ProtectedRoute>
 	  }
 	/>

@@ -26,6 +26,7 @@ type Teacher = {
   fyomi: string;
   gyomi: string;
   joukin: boolean;
+  kaisuu2026: number;
   ref_id?: number | null;
   honmuko?: string | null;
 };
@@ -57,15 +58,42 @@ export default function TeacherManager({ year }: { year: number }) {
 
   // 🔹 教員リスト取得
   const fetchTeachers = async () => {
-    const { data, error } = await supabase
+    const { data: teacherData, error } = await supabase
       .from("teachers")
       .select("*")
       .order("joukin", { ascending: false }) // 常勤 → 非常勤
-      .order("fyomi", { ascending: true }) // 姓のよみ順
-      .order("gyomi", { ascending: true }); // 名のよみ順
-    if (error) console.error(error);
-    else setTeachers(data || []);
+      .order("fyomi")
+      .order("gyomi");
+
+    const { data: kaisuuData } = await supabase
+      .from("jugyos")
+      .select("teacher_id, kaisuu")
+      .eq("year", 2026);
+
+    // teacher_idごとにkaisuuを合計
+    const totals: Record<number, number> = {};
+    for (const row of kaisuuData || []) {
+      totals[row.teacher_id] = (totals[row.teacher_id] || 0) + (row.kaisuu || 0);
+    }
+
+    const merged = (teacherData || []).map((t) => ({
+      ...t,
+      kaisuu2026: totals[t.id] || 0,
+    }));
+
+    if (!error) setTeachers(merged);
   };
+  
+  //const fetchTeachers = async () => {
+  //  const { data, error } = await supabase
+  //    .from("teachers")
+  //    .select("*")
+  //    .order("joukin", { ascending: false }) // 常勤 → 非常勤
+  //    .order("fyomi", { ascending: true }) // 姓のよみ順
+  //    .order("gyomi", { ascending: true }); // 名のよみ順
+  //  if (error) console.error(error);
+  //  else setTeachers(data || []);
+  //};
 
   useEffect(() => {
     fetchTeachers();
@@ -141,6 +169,7 @@ export default function TeacherManager({ year }: { year: number }) {
             <TableCell>氏名</TableCell>
             <TableCell>よみ</TableCell>
             <TableCell>常勤</TableCell>
+	    <TableCell align="right">2026</TableCell>
             <TableCell>本務校</TableCell>
           </TableRow>
         </TableHead>
@@ -156,6 +185,7 @@ export default function TeacherManager({ year }: { year: number }) {
 	      </TableCell>
 	      <TableCell>{`${t.fyomi} ${t.gyomi}`}</TableCell>
 	      <TableCell>{t.joukin ? "常勤" : "非常勤"}</TableCell>
+	      <TableCell align="right">{t.kaisuu2026 || ""}</TableCell>
 	      <TableCell>{t.honmuko || ""}</TableCell>
 	      <TableCell align="right">
 		<IconButton

@@ -1,0 +1,30 @@
+import { useEffect, useState } from "react";
+import {
+  Box, Button, Table, TableHead, TableRow, TableCell,
+  TableBody, Typography, IconButton
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import AddIcon from "@mui/icons-material/Add";
+import { supabase } from "../lib/supabaseClient";
+
+export default function TermsView() {
+  //const [kamokus, setKamokus] = useState<any[]>([]);
+  //const [open, setOpen] = useState(false);
+  //const [selected, setSelected] = useState<any | null>(null);
+  //
+  //const fetchKamokus = async () => {
+  //  const { data, error } = await supabase
+  //    .from("kamokus")
+  //    .select("*")
+  //    .order("level", { ascending: true })
+  //    .order("id", { ascending: true });
+  //  if (!error) setKamokus(data || []);
+  //};
+  //
+  //useEffect(() => { fetchKamokus(); }, []);
+
+  return (
+    <Box >
+    </Box>
+  );
+}

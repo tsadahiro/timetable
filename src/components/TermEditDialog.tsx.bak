@@ -1,0 +1,198 @@
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  TextField,
+} from "@mui/material";
+import { supabase } from "../lib/supabaseClient";
+
+export interface Term {
+  id?: number;
+  name?: string | null;
+  year?: number | null;
+  start?: string | null; // 'YYYY-MM-DD'
+  end?: string | null;   // 'YYYY-MM-DD' （カラム名は "end" だがJSでは end でOK）
+  abbr?: string | null;
+  length?: number | null;
+}
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  term: Term | null;              // null のとき新規
+  onSaved: () => void;            // 保存成功後のコールバック（親で再fetch）
+}
+
+const TermEditDialog: React.FC<Props> = ({ open, onClose, term, onSaved }) => {
+  const [current, setCurrent] = useState<Term>({
+    name: "",
+    year: undefined,
+    start: "",
+    end: "",
+    abbr: "",
+    length: undefined,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    // term が null なら新規、そうでなければ編集
+    if (term) {
+      setCurrent({
+        id: term.id,
+        name: term.name ?? "",
+        year: term.year ?? undefined,
+        start: term.start ?? "",
+        end: term.end ?? "",
+        abbr: term.abbr ?? "",
+        length: term.length ?? undefined,
+      });
+    } else {
+      setCurrent({
+        name: "",
+        year: undefined,
+        start: "",
+        end: "",
+        abbr: "",
+        length: undefined,
+      });
+    }
+  }, [term, open]);
+
+  // 文字列 -> number 変換（空なら undefined）
+  const toNum = (v: string) =>
+    v === "" || v === null || v === undefined ? undefined : Number(v);
+
+  const handleChange = (key: keyof Term, value: string) => {
+    if (key === "year" || key === "length") {
+      setCurrent((c) => ({ ...c, [key]: toNum(value) }));
+    } else {
+      setCurrent((c) => ({ ...c, [key]: value }));
+    }
+  };
+
+  const validate = () => {
+    // 最低限：name, year, start, end は入れておくのが実務的
+    if (!current.name || !current.start || !current.end) return false;
+    if (current.year === undefined || Number.isNaN(current.year)) return false;
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (!validate()) {
+      alert("名称・年度・開始日・終了日は必須です。");
+      return;
+    }
+    setSaving(true);
+
+    // DBに存在する列のみを送る
+    const payload = {
+      name: current.name ?? null,
+      year: current.year ?? null,
+      start: current.start ?? null,
+      end: current.end ?? null,         // ← カラム名は "end"（ダブルクォート付き）ですが、JSのキーは end でOK
+      abbr: current.abbr ?? null,
+      length: current.length ?? null,
+    };
+
+    let error;
+    if (current.id) {
+      ({ error } = await supabase.from("terms").update(payload).eq("id", current.id));
+    } else {
+      ({ error } = await supabase.from("terms").insert([payload]));
+    }
+
+    setSaving(false);
+
+    if (error) {
+      console.error(error);
+      alert("保存に失敗しました。");
+      return;
+    }
+
+    onSaved();
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>{current.id ? "学期を編集" : "学期を追加"}</DialogTitle>
+      <DialogContent>
+        <Box mt={1}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={8}>
+              <TextField
+                label="名称（例：春学期 / 秋学期）"
+                value={current.name ?? ""}
+                onChange={(e) => handleChange("name", e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="年度"
+                type="number"
+                value={current.year ?? ""}
+                onChange={(e) => handleChange("year", e.target.value)}
+                fullWidth
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="開始日"
+                type="date"
+                value={current.start ?? ""}
+                onChange={(e) => handleChange("start", e.target.value)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="終了日"
+                type="date"
+                value={current.end ?? ""}
+                onChange={(e) => handleChange("end", e.target.value)}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="略称（例：S/A など）"
+                value={current.abbr ?? ""}
+                onChange={(e) => handleChange("abbr", e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="長さ（任意・週数など）"
+                type="number"
+                value={current.length ?? ""}
+                onChange={(e) => handleChange("length", e.target.value)}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+        </Box>
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose} disabled={saving}>
+          閉じる
+        </Button>
+        <Button onClick={handleSave} variant="contained" disabled={saving}>
+          保存
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default TermEditDialog;
