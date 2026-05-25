@@ -97,6 +97,7 @@ export default function Timetable({jugyos, fetchJugyos,  year, termName}:Timetab
               {/* 各時限 */}
               {periods.map((p) => {
                 const js = jugyosAt(i+1, p);
+		console.log(js);
                 return (
                   <TableCell
                     key={p}

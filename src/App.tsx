@@ -18,7 +18,7 @@ import TermsView from "./components/TermsView"
 
 export default function App() {
   //const [showAvailable, setShowAvailable] = useState(false);
-  const terms = ["第１","第３","第４","通年","第２"]
+  const terms = ["第1","第3","第4","通年","第2"]
   const [tab, setTab] = useState(0);
   const [jugyos, setJugyos] = useState<any[]>([]);
   //const [year, setYear] = useState<number>(2026);
