@@ -1,28 +1,41 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box, Button, Table, TableHead, TableRow, TableCell,
   TableBody, Typography, IconButton
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
-import { supabase } from "../lib/supabaseClient";
+//import { supabase } from "../lib/supabaseClient";
 import KamokuDialog from "./KamokuDialog";
 
-export default function KamokuManager() {
-  const [kamokus, setKamokus] = useState<any[]>([]);
+type Kamoku = {
+  id: number;
+  name: string;
+  introduced?: number | null;
+  level?: number | null;
+  hisshu?: boolean | null;
+  sentakuhi?: boolean | null;
+  kyoshoku?: boolean | null;
+  credit?: number | null;
+  dm?: boolean | null;
+  department_id?: number | null;
+  departments?: {
+    id: number;
+    name: string;
+    abbr?: string | null;
+  } | null;
+};
+
+export default function KamokuManager({
+  kamokus,
+  fetchMaster,
+}:{
+  kamokus: Kamoku[];
+  fetchMaster: any;
+}
+) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<any | null>(null);
-
-  const fetchKamokus = async () => {
-    const { data, error } = await supabase
-      .from("kamokus")
-      .select("*")
-      .order("level", { ascending: true })
-      .order("id", { ascending: true });
-    if (!error) setKamokus(data || []);
-  };
-
-  useEffect(() => { fetchKamokus(); }, []);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -41,6 +54,7 @@ export default function KamokuManager() {
         <TableHead>
           <TableRow>
             <TableCell>ID</TableCell>
+            <TableCell>学科</TableCell>
             <TableCell>科目名</TableCell>
             <TableCell>導入年度</TableCell>
             <TableCell>開講年次</TableCell>
@@ -54,9 +68,10 @@ export default function KamokuManager() {
         </TableHead>
 
         <TableBody>
-          {kamokus.map((k) => (
+          {kamokus.map((k: Kamoku) => (
             <TableRow key={k.id}>
               <TableCell>{k.id}</TableCell>
+              <TableCell>{k.departments?.name ?? ""}</TableCell>
               <TableCell>{k.name}</TableCell>
               <TableCell>{k.introduced}</TableCell>
               <TableCell>{k.level}</TableCell>
@@ -64,7 +79,7 @@ export default function KamokuManager() {
               <TableCell>{k.sentakuhi ? "○" : ""}</TableCell>
               <TableCell>{k.kyoshoku ? "○" : ""}</TableCell>
               <TableCell>{k.credit}</TableCell>
-              <TableCell>{k.DM ? "○" : ""}</TableCell>
+              <TableCell>{k.dm ? "○" : ""}</TableCell>
               <TableCell align="right">
                 <IconButton size="small" onClick={() => { setSelected(k); setOpen(true); }}>
                   <EditIcon fontSize="small" />
@@ -79,7 +94,7 @@ export default function KamokuManager() {
         open={open}
         onClose={() => setOpen(false)}
         kamoku={selected}
-        onSaved={fetchKamokus}
+        onSaved={fetchMaster}
       />
     </Box>
   );

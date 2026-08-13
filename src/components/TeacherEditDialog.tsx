@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  MenuItem,
   TextField,
 } from "@mui/material";
 import { useState, useEffect } from "react";
@@ -13,11 +14,13 @@ export default function TeacherEditDialog({
   open,
   onClose,
   teacher,
+  departments,
   onSaved,
 }: {
   open: boolean;
   onClose: () => void;
   teacher: any;
+  departments: any[];
   onSaved: () => void;
 }) {
   const [current, setCurrent] = useState<any>(teacher || {});
@@ -27,27 +30,60 @@ export default function TeacherEditDialog({
   }, [teacher]);
 
   const handleSave = async () => {
-    if (!current.id) return;
-    const { error } = await supabase
-      .from("teachers")
-      .update({
-        fname: current.fname,
-        gname: current.gname,
-        fyomi: current.fyomi,
-        gyomi: current.gyomi,
-        joukin: current.joukin,
-        honmuko: current.honmuko,
-      })
-      .eq("id", current.id);
+    const data = {
+      fname: current.fname,
+      gname: current.gname,
+      fyomi: current.fyomi,
+      gyomi: current.gyomi,
+      joukin: current.joukin,
+      honmuko: current.honmuko || null,
+      department_id: current.department_id ?? null,
+    };
+
+    let error;
+
+    if (current.id) {
+      ({ error } = await supabase
+	.from("teachers")
+	.update(data)
+	.eq("id", current.id));
+    } else {
+      ({ error } = await supabase
+	.from("teachers")
+	.insert(data));
+    }
 
     if (error) {
-      alert("更新に失敗しました");
+      alert(current.id ? "更新に失敗しました" : "登録に失敗しました");
       console.error(error);
       return;
     }
-    onSaved();
+
+    await onSaved();
     onClose();
-  };
+  };  
+  //const handleSave = async () => {
+  //  if (!current.id) return;
+  //  const { error } = await supabase
+  //    .from("teachers")
+  //    .update({
+  //      fname: current.fname,
+  //      gname: current.gname,
+  //      fyomi: current.fyomi,
+  //      gyomi: current.gyomi,
+  //      joukin: current.joukin,
+  //      honmuko: current.honmuko,
+  //    })
+  //    .eq("id", current.id);
+  //
+  //  if (error) {
+  //    alert("更新に失敗しました");
+  //    console.error(error);
+  //    return;
+  //  }
+  //  onSaved();
+  //  onClose();
+  //};
 
   const handleDelete = async () => {
     if (!current.id) return;
@@ -70,7 +106,9 @@ export default function TeacherEditDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>教員情報の編集</DialogTitle>
+      <DialogTitle>
+	{current.id ? "教員情報の編集" : "新規教員の登録"}
+      </DialogTitle>     
       <DialogContent>
         <TextField
           margin="dense"
@@ -134,11 +172,33 @@ export default function TeacherEditDialog({
           <option value="true">常勤</option>
           <option value="false">非常勤</option>
         </TextField>
+	<TextField
+	  select
+	  margin="dense"
+	  label="所属学科"
+	  fullWidth
+	  value={current.department_id ?? ""}
+	  onChange={(e) =>
+	    setCurrent({
+	      ...current,
+	      department_id:
+          e.target.value === "" ? null : Number(e.target.value),
+	    })
+	  }
+	>
+	  {departments.map((d: any) => (
+	    <MenuItem key={d.id} value={d.id}>
+	      {d.abbr ?? d.name}
+	    </MenuItem>
+	  ))}
+	</TextField>
       </DialogContent>
       <DialogActions>
-        <Button color="error" onClick={handleDelete}>
-          削除
-        </Button>
+	{current.id && (
+	  <Button color="error" onClick={handleDelete}>
+	    削除
+	  </Button>
+	)}
         <Button onClick={onClose}>キャンセル</Button>
         <Button variant="contained" onClick={handleSave}>
           保存

@@ -1,7 +1,7 @@
 import EditIcon from "@mui/icons-material/Edit";
 import IconButton from "@mui/material/IconButton";
 import TeacherEditDialog from "./TeacherEditDialog";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Button,
@@ -15,7 +15,6 @@ import {
   TableHead,
   TableRow,
   Typography,
-  TextField,
 } from "@mui/material";
 import { supabase } from "../lib/supabaseClient";
 
@@ -29,92 +28,68 @@ type Teacher = {
   kaisuu2026: number;
   ref_id?: number | null;
   honmuko?: string | null;
+  department_id?: number | null;
 };
 
 type Jugyo = {
   id: number;
   year: number;
   period: number;
+  teacher_id: number | null;
   kaisuu: number;
   wdays: { name: string };
   kamokus: { name: string };
+  terms: { name: string };
 };
 
-export default function TeacherManager({ year }: { year: number }) {
+export default function TeacherManager({
+  year,
+  selectedDepartmentId,
+  jugyos,
+  teachers,
+  departments,
+  fetchMaster,
+}: {
+  year: number;
+  selectedDepartmentId: number | null;
+  teachers: Teacher[];
+  jugyos: Jugyo[];
+  departments: any[];
+  fetchMaster: () => Promise<void>;
+}) {
   const [editOpen, setEditOpen] = useState(false);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
-  const [jugyos, setJugyos] = useState<Jugyo[]>([]);
-  const [addOpen, setAddOpen] = useState(false);
-  const [newTeacher, setNewTeacher] = useState({
-    fname: "",
-    gname: "",
-    fyomi: "",
-    gyomi: "",
-    joukin: true,
-    honmuko: "",
-  });
+  const [teacherJugyos, setTeacherJugyos] = useState<Jugyo[]>([]);
 
-  // 🔹 教員リスト取得
-  const fetchTeachers = async () => {
-    const { data: teacherData, error } = await supabase
-      .from("teachers")
-      .select("*")
-      .order("joukin", { ascending: false }) // 常勤 → 非常勤
-      .order("fyomi")
-      .order("gyomi");
-
-    const { data: kaisuuData } = await supabase
-      .from("jugyos")
-      .select("teacher_id, kaisuu")
-      .eq("year", 2026);
-
-    // teacher_idごとにkaisuuを合計
-    const totals: Record<number, number> = {};
-    for (const row of kaisuuData || []) {
-      totals[row.teacher_id] = (totals[row.teacher_id] || 0) + (row.kaisuu || 0);
-    }
-
-    const merged = (teacherData || []).map((t) => ({
-      ...t,
-      kaisuu2026: totals[t.id] || 0,
-    }));
-
-    if (!error) setTeachers(merged);
-  };
-  
-  //const fetchTeachers = async () => {
-  //  const { data, error } = await supabase
-  //    .from("teachers")
-  //    .select("*")
-  //    .order("joukin", { ascending: false }) // 常勤 → 非常勤
-  //    .order("fyomi", { ascending: true }) // 姓のよみ順
-  //    .order("gyomi", { ascending: true }); // 名のよみ順
-  //  if (error) console.error(error);
-  //  else setTeachers(data || []);
-  //};
-
-  useEffect(() => {
-    fetchTeachers();
-  }, []);
+  const teachersWithKaisuu = teachers.map((t) => ({
+    ...t,
+    kaisuu2026: jugyos
+      .filter((j) => j.teacher_id === t.id && j.year === year)
+      .reduce((sum, j) => sum + (j.kaisuu || 0), 0),
+  }));
 
   // 🔹 教員クリック時：担当授業を取得
   const handleOpenTeacher = async (teacher: Teacher) => {
     setSelectedTeacher(teacher);
     const { data, error } = await supabase
       .from("jugyos")
-      .select("id, year, period, wday_id, kaisuu, wdays(name), kamokus(name, level)")
+      .select("id, year, term_id, terms(name), period, wday_id, kaisuu, wdays(name), kamokus(name, level)")
       .eq("teacher_id", teacher.id)
       .eq("year", year)
+      .order("term_id", { ascending: true })
       .order("wday_id", { ascending: true })
       .order("period", { ascending: true });
 
     if (error) console.error(error);
     else
-      setJugyos(
+      setTeacherJugyos(
 	(data || []).map((j: any) => ({
 	  ...j,
+	  terms:
+        Array.isArray(j.terms) && j.terms.length > 0
+						 ? j.terms[0]
+						 : j.terms || { name: "" },
 	  wdays:
         Array.isArray(j.wdays) && j.wdays.length > 0
 						 ? j.wdays[0]
@@ -123,29 +98,9 @@ export default function TeacherManager({ year }: { year: number }) {
         Array.isArray(j.kamokus) && j.kamokus.length > 0
 						     ? j.kamokus[0]
 						     : j.kamokus || { name: "" },
-	})).sort((a, b) => (a.kamokus?.level ?? 0) - (b.kamokus?.level ?? 0))
+	}))
       );
     setOpenDialog(true);
-  };
-
-  // 🔹 教員追加
-  const handleAddTeacher = async () => {
-    const { error } = await supabase.from("teachers").insert([newTeacher]);
-    if (error) {
-      alert("登録に失敗しました");
-      console.error(error);
-      return;
-    }
-    setAddOpen(false);
-    setNewTeacher({
-      fname: "",
-      gname: "",
-      fyomi: "",
-      gyomi: "",
-      joukin: true,
-      honmuko: "",
-    });
-    fetchTeachers();
   };
 
   return (
@@ -154,13 +109,24 @@ export default function TeacherManager({ year }: { year: number }) {
         教員一覧
       </Typography>
 
-      {/* 新規追加ボタン */}
-      <Box sx={{ mb: 2 }}>
-        <Button variant="contained" onClick={() => setAddOpen(true)}>
-          新規追加
-        </Button>
-      </Box>
-
+    {/* 新規追加ボタン */}
+    <Button
+      variant="contained"
+      onClick={() => {
+	setSelectedTeacher({
+	  fname: "",
+	  gname: "",
+	  fyomi: "",
+	  gyomi: "",
+	  joukin: true,
+	  honmuko: "",
+	  department_id: selectedDepartmentId,
+	} as Teacher);
+	setEditOpen(true);
+      }}
+    >
+      新規追加
+    </Button>
       {/* 教員一覧テーブル */}
       <Table size="small">
         <TableHead>
@@ -174,7 +140,7 @@ export default function TeacherManager({ year }: { year: number }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {teachers.map((t) => (
+          {teachersWithKaisuu.map((t) => (
 	    <TableRow key={t.id} hover>
 	      <TableCell>{t.id}</TableCell>
 	      <TableCell
@@ -216,7 +182,7 @@ export default function TeacherManager({ year }: { year: number }) {
             : "担当授業"}
         </DialogTitle>
 	<DialogContent dividers>
-	  {jugyos.length === 0 ? (
+	  {teacherJugyos.length === 0 ? (
 	    <Typography>該当授業なし</Typography>
 	  ) : (
 	    <>
@@ -224,15 +190,17 @@ export default function TeacherManager({ year }: { year: number }) {
 		<TableHead>
 		  <TableRow>
 		    <TableCell>科目</TableCell>
+		    <TableCell>ターム</TableCell>
 		    <TableCell>曜日</TableCell>
 		    <TableCell>時限</TableCell>
 		    <TableCell align="right">回数</TableCell>
 		  </TableRow>
 		</TableHead>
 		<TableBody>
-		  {jugyos.map((j) => (
+		  {teacherJugyos.map((j) => (
 		    <TableRow key={j.id}>
 		      <TableCell>{j.kamokus?.name}</TableCell>
+		      <TableCell>{j.terms?.name}</TableCell>
 		      <TableCell>{j.wdays?.name}</TableCell>
 		      <TableCell>{j.period}</TableCell>
 		      <TableCell align="right">{j.kaisuu ?? "-"}</TableCell>
@@ -244,7 +212,7 @@ export default function TeacherManager({ year }: { year: number }) {
 	      <Typography sx={{ mt: 2, textAlign: "right" }}>
 		合計回数：
 		<strong>
-		  {jugyos.reduce((sum, j) => sum + (j.kaisuu || 0), 0)}
+		  {teacherJugyos.reduce((sum, j) => sum + (j.kaisuu || 0), 0)}
 		</strong>
 	      </Typography>
 	    </>
@@ -259,86 +227,13 @@ export default function TeacherManager({ year }: { year: number }) {
 	open={editOpen}
 	onClose={() => setEditOpen(false)}
 	teacher={selectedTeacher}
-	onSaved={() => {
-	  fetchTeachers();
+	departments={departments}
+	onSaved={async () => {
+	  //fetchTeachers();
+	  await fetchMaster();
 	  setEditOpen(false);
 	}}
       />
-      
-      {/* 教員追加ダイアログ */}
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>新規教員の登録</DialogTitle>
-        <DialogContent>
-          <TextField
-            margin="dense"
-            label="姓"
-            fullWidth
-            value={newTeacher.fname}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, fname: e.target.value })
-            }
-          />
-          <TextField
-            margin="dense"
-            label="名"
-            fullWidth
-            value={newTeacher.gname}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, gname: e.target.value })
-            }
-          />
-          <TextField
-            margin="dense"
-            label="姓のよみ"
-            fullWidth
-            value={newTeacher.fyomi}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, fyomi: e.target.value })
-            }
-          />
-          <TextField
-            margin="dense"
-            label="名のよみ"
-            fullWidth
-            value={newTeacher.gyomi}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, gyomi: e.target.value })
-            }
-          />
-          <TextField
-            margin="dense"
-            label="本務校"
-            fullWidth
-            value={newTeacher.honmuko}
-            onChange={(e) =>
-              setNewTeacher({ ...newTeacher, honmuko: e.target.value })
-            }
-          />
-          <TextField
-            select
-            margin="dense"
-            label="常勤 / 非常勤"
-            fullWidth
-            value={newTeacher.joukin ? "true" : "false"}
-            onChange={(e) =>
-              setNewTeacher({
-                ...newTeacher,
-                joukin: e.target.value === "true",
-              })
-            }
-            SelectProps={{ native: true }}
-          >
-            <option value="true">常勤</option>
-            <option value="false">非常勤</option>
-          </TextField>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddOpen(false)}>キャンセル</Button>
-          <Button variant="contained" onClick={handleAddTeacher}>
-            登録
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

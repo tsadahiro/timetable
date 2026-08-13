@@ -12,15 +12,30 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import AddIcon from "@mui/icons-material/Add";
-import { supabase } from "../lib/supabaseClient";
 import JugyoEditDialog from "./JugyoEditDialog";
+
+
+type JugyoManagerProps = {
+  jugyos: any;
+  //fetchJugyos: any;
+  onSaveJugyo: any;
+  teachers: any[];
+  kamokus: any[];
+  terms: any[];
+  wdays: any[];
+  departments: any[];
+  //forbiddens: any[];
+  selectedDepartmentId: number | null;
+};
+
 
 type Jugyo = {
   id?: number;
   year: number;
   term_id: number;
-  teacher_id: number;
-  kamoku_id: number;
+  department_id: number | null;
+  teacher_id: number | null;
+  kamoku_id: number | null;
   wday_id: number;
   period: number;
   excercise?: boolean;
@@ -28,21 +43,67 @@ type Jugyo = {
   notes?: string;
   comment?: string;
   kaisuu?: number;
+
+  teachers?: {
+    id: number;
+    fname?: string;
+    gname?: string;
+  } | null;
+
+  kamokus?: {
+    id: number;
+    name?: string;
+    level?: number;
+  } | null;
+
+  terms?: {
+    id?: number;
+    name?: string;
+  } | null;
+
+  wdays?: {
+    id?: number;
+    name?: string;
+  } | null;
 };
 
-export default function JugyoManager({
-  jugyos,
-  fetchJugyos,
-}: {
-  jugyos: any[];
-  fetchJugyos: () => Promise<void>;
-}) {
+export default function JugyoManager({jugyos,
+				      //fetchJugyos,
+				      onSaveJugyo,
+				      teachers,
+				      kamokus,
+				      terms,
+				      wdays,
+				      departments,
+				      selectedDepartmentId}: JugyoManagerProps) {
   const [open, setOpen] = useState(false);
   const [selectedJugyo, setSelectedJugyo] = useState<Jugyo | null>(null);
   const [isNew, setIsNew] = useState(false);
 
+  const departmentLabel = (departmentId: number | null | undefined) => {
+    if (departmentId == null) return "未指定";
+
+    const dept = departments.find((d: any) => d.id === departmentId);
+
+    return dept?.abbr ?? dept?.name ?? `ID:${departmentId}`;
+  };
+  
   const handleEdit = (jugyo: Jugyo) => {
-    setSelectedJugyo(jugyo);
+    setSelectedJugyo({
+      id: jugyo.id,
+      year: jugyo.year,
+      term_id: jugyo.term_id,
+      department_id: jugyo.department_id,
+      teacher_id: jugyo.teachers?.id ?? null,   // ← ネストから取る
+      kamoku_id: jugyo.kamokus?.id ?? null,     // ← ネストから取る
+      wday_id: jugyo.wday_id,
+      period: jugyo.period,
+      kaisuu: jugyo.kaisuu,
+      excercise: jugyo.excercise,
+      exception: jugyo.exception,
+      notes: jugyo.notes,
+      comment: jugyo.comment,
+    });
     setIsNew(false);
     setOpen(true);
   };
@@ -50,10 +111,12 @@ export default function JugyoManager({
   const handleNew = () => {
     setSelectedJugyo({
       year: new Date().getFullYear(),
-      term_id: 1,
-      teacher_id: 0,
+      department_id: selectedDepartmentId?? null,
+      term_id: terms[0]?.id ?? 1,  // ← ソート済みの先頭
+      //teacher_id: teachers[0]?.id ?? 0,
+      teacher_id: null,
       kamoku_id: 0,
-      wday_id: 1,
+      wday_id: wdays[0]?.id ?? 1,
       period: 1,
       excercise: false,
       exception: false,
@@ -62,6 +125,7 @@ export default function JugyoManager({
     setOpen(true);
   };
 
+  /*
   const handleSave = async (jugyo: any, deleted = false) => {
     
     if (deleted) {
@@ -76,6 +140,7 @@ export default function JugyoManager({
     const cleanData = {
       year: jugyo.year,
       term_id: jugyo.term_id,
+      department_id: jugyo.department_id ?? selectedDepartmentId ?? null,
       teacher_id: jugyo.teacher_id,
       kamoku_id: jugyo.kamoku_id,
       wday_id: jugyo.wday_id,
@@ -108,7 +173,7 @@ export default function JugyoManager({
     }
     await fetchJugyos();
   };
-
+  */
 
   return (
     <Box sx={{ p: 3 }}>
@@ -128,6 +193,7 @@ export default function JugyoManager({
           <TableRow>
             <TableCell>ID</TableCell>
             <TableCell>年度</TableCell>
+            <TableCell>学科</TableCell>
             <TableCell>学期</TableCell>
             <TableCell>教員</TableCell>
             <TableCell>科目</TableCell>
@@ -138,10 +204,11 @@ export default function JugyoManager({
           </TableRow>
         </TableHead>
         <TableBody>
-          {jugyos.map((j) => (
-            <TableRow key={j.id}>
+          {jugyos.map((j: Jugyo) => (
+            <TableRow key={j.id} hover>
               <TableCell>{j.id}</TableCell>
               <TableCell>{j.year}</TableCell>
+	      <TableCell>{departmentLabel(j.department_id)}</TableCell>
               <TableCell>{j.terms?.name ?? ""}</TableCell>
               <TableCell>
                 {j.teachers
@@ -169,9 +236,15 @@ export default function JugyoManager({
 	    setOpen(false)
 	    setSelectedJugyo(null);
 	  }}
-          jugyo={selectedJugyo}
-          onSaved={handleSave}
-          isNew={isNew}
+	  jugyo={selectedJugyo}
+	  onSaved={onSaveJugyo}
+	  isNew={isNew}
+	  teachers={teachers}
+	  kamokus={kamokus}
+	  terms={terms}
+	  wdays={wdays}
+	  departments={departments}
+	  selectedDepartmentId={selectedDepartmentId}
         />
       )}
     </Box>
