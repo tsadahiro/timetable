@@ -20,6 +20,8 @@ type TimetableProps = {
   kamokus: any[];
   terms: any[];
   wdays: any[];
+  departments: any[];
+  selectedDepartmentId: number | null;
 };
 
 export default function Timetable({jugyos,
@@ -30,6 +32,8 @@ export default function Timetable({jugyos,
 				   kamokus,
 				   terms,
 				   wdays,
+				   departments,
+				   selectedDepartmentId
 				   }:TimetableProps) {
   const [selectedJugyo, setSelectedJugyo] = useState<any>(null);
   const [open, setOpen] = useState(false);
@@ -179,6 +183,8 @@ export default function Timetable({jugyos,
 	  kamokus={kamokus}
 	  terms={terms}
 	  wdays={wdays}
+	  departments={departments}
+	  selectedDepartmentId={selectedDepartmentId}
         />
     </Box>
   );

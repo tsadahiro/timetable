@@ -25,7 +25,12 @@ export default function ProtectedRoute({ children }: { children: any }) {
       //const allowedDomains = ["tsuda.ac.jp"]; //  許可するドメインをここに設定
       //const isAllowed = allowedDomains.includes(domain);
 
-      const allowedAddresses = ["sadahiro@tsuda.ac.jp", "kishi@tsuda.ac.jp", "kurihara@tsuda.ac.jp", "aiko.uemura@tsuda.ac.jp"]; //  許可するユーザ
+      const allowedAddresses = ["sadahiro@tsuda.ac.jp",
+				"kishi@tsuda.ac.jp",
+				"kurihara@tsuda.ac.jp",
+				"aiko.uemura@tsuda.ac.jp",
+				"hiroaki@tsuda.ac.jp"
+      ]; //  許可するユーザ
       const isAllowed = allowedAddresses.includes(email)
       
       if (isAllowed) {

@@ -2,7 +2,6 @@ import EditIcon from "@mui/icons-material/Edit";
 import IconButton from "@mui/material/IconButton";
 import TeacherEditDialog from "./TeacherEditDialog";
 import { useState } from "react";
-import { useMemo } from "react";
 import {
   Box,
   Button,
@@ -69,17 +68,6 @@ export default function TeacherManager({
       .filter((j) => j.teacher_id === t.id && j.year === year)
       .reduce((sum, j) => sum + (j.kaisuu || 0), 0),
   }));
-
-  const teacherNameById = useMemo(
-    () =>
-      new Map<number, string>(
-	teachers.map((teacher) => [
-          teacher.id,
-          `${teacher.fname ?? ""} ${teacher.gname ?? ""}`.trim(),
-	]),
-      ),
-    [teachers],
-  );
 
   // 🔹 教員クリック時：担当授業を取得
   const handleOpenTeacher = async (teacher: Teacher) => {
@@ -149,8 +137,6 @@ export default function TeacherManager({
             <TableCell>常勤</TableCell>
 	    <TableCell align="right">{year}</TableCell>
             <TableCell>本務校</TableCell>
-            <TableCell>連絡係</TableCell>
-            <TableCell></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -167,9 +153,6 @@ export default function TeacherManager({
 	      <TableCell>{t.joukin ? "常勤" : "非常勤"}</TableCell>
 	      <TableCell align="right">{t.kaisuu2026 || ""}</TableCell>
 	      <TableCell>{t.honmuko || ""}</TableCell>
-	      <TableCell>{t.ref_id == null
-			? "—"
-			: teacherNameById.get(t.ref_id) ?? "不明"}</TableCell>
 	      <TableCell align="right">
 		<IconButton
 		  size="small"

@@ -4,7 +4,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Autocomplete,
   MenuItem,
   TextField,
 } from "@mui/material";
@@ -25,63 +24,10 @@ export default function TeacherEditDialog({
   onSaved: () => void;
 }) {
   const [current, setCurrent] = useState<any>(teacher || {});
-  const [refTeachers, setRefTeachers] = useState<any[]>([]);
-  const [refDepartmentId, setRefDepartmentId] = useState<number | "all">(
-    "all",
-  );
-  const [refTeachersLoading, setRefTeachersLoading] = useState(false);
 
   useEffect(() => {
     setCurrent(teacher || {});
   }, [teacher]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    let active = true;
-
-    const loadRefTeachers = async () => {
-      setRefTeachersLoading(true);
-
-      const { data, error } = await supabase
-        .from("teachers")
-        .select("id, fname, gname, fyomi, gyomi, department_id")
-        .eq("joukin", true)
-        .order("fyomi", { ascending: true })
-        .order("gyomi", { ascending: true });
-
-      if (!active) return;
-
-      setRefTeachersLoading(false);
-
-      if (error) {
-        console.error("連絡担当教員の取得に失敗しました", error);
-        setRefTeachers([]);
-        return;
-      }
-
-      const teachers = data ?? [];
-      setRefTeachers(teachers);
-
-      const selected = teachers.find((t) => t.id === teacher?.ref_id);
-      setRefDepartmentId(selected?.department_id ?? "all");
-    };
-
-    void loadRefTeachers();
-
-    return () => {
-      active = false;
-    };
-  }, [open, teacher]);
-
-  const refTeacherCandidates = refTeachers.filter(
-    (t) =>
-      refDepartmentId === "all" ||
-      t.department_id === refDepartmentId,
-  );
-
-  const selectedRefTeacher =
-    refTeachers.find((t) => t.id === current.ref_id) ?? null;
 
   const handleSave = async () => {
     const data = {
@@ -92,7 +38,6 @@ export default function TeacherEditDialog({
       joukin: current.joukin,
       honmuko: current.honmuko || null,
       department_id: current.department_id ?? null,
-      ref_id: current.joukin ? null : (current.ref_id ?? null),
     };
 
     let error;
@@ -116,7 +61,29 @@ export default function TeacherEditDialog({
 
     await onSaved();
     onClose();
-  };
+  };  
+  //const handleSave = async () => {
+  //  if (!current.id) return;
+  //  const { error } = await supabase
+  //    .from("teachers")
+  //    .update({
+  //      fname: current.fname,
+  //      gname: current.gname,
+  //      fyomi: current.fyomi,
+  //      gyomi: current.gyomi,
+  //      joukin: current.joukin,
+  //      honmuko: current.honmuko,
+  //    })
+  //    .eq("id", current.id);
+  //
+  //  if (error) {
+  //    alert("更新に失敗しました");
+  //    console.error(error);
+  //    return;
+  //  }
+  //  onSaved();
+  //  onClose();
+  //};
 
   const handleDelete = async () => {
     if (!current.id) return;
@@ -198,8 +165,6 @@ export default function TeacherEditDialog({
             setCurrent({
               ...current,
               joukin: e.target.value === "true",
-              ref_id:
-                e.target.value === "true" ? null : current.ref_id,
             })
           }
           SelectProps={{ native: true }}
@@ -227,64 +192,6 @@ export default function TeacherEditDialog({
 	    </MenuItem>
 	  ))}
 	</TextField>
-        {current.joukin === false && (
-          <>
-            <TextField
-              select
-              margin="dense"
-              label="連絡担当者の所属"
-              fullWidth
-              value={refDepartmentId}
-              onChange={(e) => {
-                const nextDepartmentId =
-                  e.target.value === "all"
-                    ? "all"
-                    : Number(e.target.value);
-
-                setRefDepartmentId(nextDepartmentId);
-                setCurrent({ ...current, ref_id: null });
-              }}
-            >
-              <MenuItem value="all">すべての学科</MenuItem>
-              {departments.map((d: any) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.abbr ?? d.name}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <Autocomplete
-              options={refTeacherCandidates}
-              value={selectedRefTeacher}
-              loading={refTeachersLoading}
-              isOptionEqualToValue={(option, value) =>
-                option.id === value.id
-              }
-              getOptionLabel={(option) =>
-                `${option.fname ?? ""} ${option.gname ?? ""}`.trim()
-              }
-              onChange={(_, value) =>
-                setCurrent({
-                  ...current,
-                  ref_id: value?.id ?? null,
-                })
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  margin="dense"
-                  label="連絡担当教員"
-                  placeholder="氏名を入力して検索"
-                  helperText={
-                    refTeachersLoading
-                      ? "常勤教員を読み込んでいます"
-                      : "未設定の場合は空欄のままにしてください"
-                  }
-                />
-              )}
-            />
-          </>
-        )}
       </DialogContent>
       <DialogActions>
 	{current.id && (

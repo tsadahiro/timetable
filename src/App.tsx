@@ -367,6 +367,8 @@ export default function App() {
 		       kamokus={kamokus}
 		       terms={visibleTerms}
 		       wdays={wdays}
+                       departments={departments}
+                       selectedDepartmentId={selectedDepartmentId}
 		     />
 		  ))}
 		  {tab === 2 && <KamokuManager
