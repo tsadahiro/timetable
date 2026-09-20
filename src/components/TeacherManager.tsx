@@ -135,7 +135,7 @@ export default function TeacherManager({
             <TableCell>氏名</TableCell>
             <TableCell>よみ</TableCell>
             <TableCell>常勤</TableCell>
-	    <TableCell align="right">2026</TableCell>
+	    <TableCell align="right">{year}</TableCell>
             <TableCell>本務校</TableCell>
           </TableRow>
         </TableHead>

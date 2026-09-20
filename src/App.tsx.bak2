@@ -19,7 +19,6 @@ import TermsView from "./components/TermsView"
 
 export default function App() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [teachers, setTeachers] = useState<any[]>([]);
   const [kamokus, setKamokus] = useState<any[]>([]);
   const [terms, setTerms] = useState<any[]>([]);
@@ -30,6 +29,7 @@ export default function App() {
   const termNames = ["第1","第3","第4","通年","第2"]
   const [tab, setTab] = useState(0);
   const [jugyos, setJugyos] = useState<any[]>([]);
+  const year = 2026;
 
   const fetchMaster = async () => {
     const [
@@ -111,7 +111,7 @@ export default function App() {
     //setForbiddens(f || []);
   };
   
-  const fetchJugyos = async (year = selectedYear) => {
+  const fetchJugyos = async () => {
     const { data, error } = await supabase
       .from("jugyos")
       .select(`
@@ -193,7 +193,7 @@ export default function App() {
     if (!jugyo) return;
 
     const cleanData = {
-      year: jugyo.year ?? selectedYear,
+      year: jugyo.year,
       term_id: jugyo.term_id,
       department_id: jugyo.department_id ?? selectedDepartmentId ?? null,
       teacher_id: jugyo.teacher_id,
@@ -234,31 +234,13 @@ export default function App() {
   
   useEffect(() => {
     fetchMaster();
+    fetchJugyos();
   }, []);
-
-  useEffect(() => {
-    fetchJugyos(selectedYear);
-  }, [selectedYear]);
-
-  const availableYears = Array.from(
-    new Set(terms.map((term) => Number(term.year)))
-  ).sort((a, b) => b - a);
-
-  const visibleTerms = terms.filter(
-    (term) => Number(term.year) === selectedYear
-  );
 
   const availables = [];
   for (let level of [1,2,3,4]){
     for (let term of termNames){
-      availables.push(
-        <AvailableSlots
-          key={"aki" + selectedYear + "-" + level + "-" + term}
-          year={selectedYear}
-          level={level}
-          term={term}
-        />
-      )
+      availables.push(<AvailableSlots key={"aki"+level+"-"+term}year={2026} level={level} term={term}/>)
     }
   }
 
@@ -287,8 +269,8 @@ export default function App() {
 	  element={
             <ProtectedRoute>
 	      <Box sx={{ width: "100%" }}>
-		<Box sx={{ p: 2, display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
-                <FormControl size="small" sx={{ minWidth: 220 }}>
+		<Box sx={{ p: 2 }}>
+                <FormControl size="small" sx={{ minWidth: 220, mb: 2 }}>
                   <InputLabel>学科</InputLabel>
                   <Select
                     label="学科"
@@ -307,21 +289,6 @@ export default function App() {
                     {departments.map((d) => (
                       <MenuItem key={d.id} value={d.id}>
                         {d.abbr ?? d.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <FormControl size="small" sx={{ minWidth: 140 }}>
-                  <InputLabel>年度</InputLabel>
-                  <Select
-                    label="年度"
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(Number(e.target.value))}
-                  >
-                    {availableYears.map((year) => (
-                      <MenuItem key={year} value={year}>
-                        {year}年度
                       </MenuItem>
                     ))}
                   </Select>
@@ -349,7 +316,7 @@ export default function App() {
 		     onSaveJugyo={handleSaveJugyo}
 		     teachers={teachers}
                      kamokus={kamokus}
-                     terms={visibleTerms}
+                     terms={terms}
                      wdays={wdays}
                      departments={departments}
                      selectedDepartmentId={selectedDepartmentId}
@@ -358,14 +325,14 @@ export default function App() {
 		  {tab === 1 &&
 		   termNames.map((term) => (
 		     <Timetable
-		     key={"timetable" + selectedYear + "-" + term}
+		       key={"timetable" + year + "-" + term}
 		       jugyos={visibleJugyos}
 		       fetchJugyos={fetchJugyos}
-		       year={selectedYear}
+		       year={year}
 		       termName={term}
 		       teachers={teachers}
 		       kamokus={kamokus}
-		       terms={visibleTerms}
+		       terms={terms}
 		       wdays={wdays}
 		     />
 		  ))}
@@ -375,7 +342,7 @@ export default function App() {
 				/>}
 		  {tab === 3 && availables}
 		  {tab === 4 && <TeacherManager
-				  year={selectedYear}
+				  year={year}
 				  selectedDepartmentId={selectedDepartmentId}
 				  teachers={visibleTeachers}
 				  jugyos={visibleJugyos}
@@ -394,3 +361,4 @@ export default function App() {
     </>
   );
 }
+
