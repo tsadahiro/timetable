@@ -41,15 +41,28 @@ export default function Timetable({jugyos,
   const days = ["月", "火", "水", "木", "金"];
   const periods = [1, 2, 3, 4, 5];
   
-  const levelcolor = ["red","red","orange","green","blue","purple"]
+  const levelcolor = ["red","red","blue","orange","green","purple"]
   // 指定曜日・時限にあるすべての授業を取得
   const jugyosAt = (wdayId: number, period: number) =>
     (jugyos ?? []).filter((j: any) =>
-      j.wday_id === wdayId && j.period === period && j.terms?.name === termName
+      j.wday_id === wdayId && j.period === period &&
+				    ((j.terms?.name === termName || j.terms?.name === "通年") && termName !== "第2"||
+				     (j.terms?.name === termName && termName === "第2"))
     );
-  
-  const handleSave = async (jugyo: any) => {
-    const data = {
+
+  const handleSave = async (
+    jugyo: any | null,
+    deleted = false
+  ) => {
+    // 削除自体はJugyoEditDialogで完了している
+    if (deleted) {
+      await fetchJugyos();
+      return;
+    }
+
+    if (!jugyo) return;
+
+    const cleanData = {
       year: jugyo.year,
       term_id: jugyo.term_id,
       department_id: jugyo.department_id ?? null,
@@ -64,13 +77,60 @@ export default function Timetable({jugyos,
       kaisuu: jugyo.kaisuu ?? null,
     };
 
-    if (jugyo.id) {
-      await supabase.from("jugyos").update(data).eq("id", jugyo.id);
-    } else {
-      await supabase.from("jugyos").insert(data);
+    const { error } = jugyo.id
+		    ? await supabase
+		      .from("jugyos")
+		      .update(cleanData)
+		      .eq("id", jugyo.id)
+		    : await supabase
+		      .from("jugyos")
+		      .insert(cleanData);
+
+    if (error) {
+      console.error("jugyo save error:", error);
+      throw error;
     }
-    await fetchJugyos(); // 保存後に再取得
-  };
+
+    await fetchJugyos();
+  };  
+  //const handleSave = async (jugyo: any) => {
+  //  const cleanData = {
+  //    year: jugyo.year,
+  //    term_id: jugyo.term_id,
+  //    department_id: jugyo.department_id ?? null,
+  //    teacher_id: jugyo.teacher_id,
+  //    kamoku_id: jugyo.kamoku_id,
+  //    wday_id: jugyo.wday_id,
+  //    period: jugyo.period,
+  //    excercise: jugyo.excercise ?? false,
+  //    exception: jugyo.exception ?? false,
+  //    notes: jugyo.notes ?? null,
+  //    comment: jugyo.comment ?? null,
+  //    kaisuu: jugyo.kaisuu ?? null,
+  //  };
+  //
+  //  const { error } = jugyo.id
+  //		    ? await supabase
+  //		      .from("jugyos")
+  //		      .update(cleanData)
+  //		      .eq("id", jugyo.id)
+  //		    : await supabase
+  //		      .from("jugyos")
+  //		      .insert(cleanData);
+  //
+  //  if (error) {
+  //    console.error("jugyo save error:", error);
+  //    // 呼び出し側へ失敗を伝える
+  //    throw error;
+  //  }
+  //  
+  //  //if (jugyo.id) {
+  //  //  await supabase.from("jugyos").update(data).eq("id", jugyo.id);
+  //  //} else {
+  //  //  await supabase.from("jugyos").insert(data);
+  //  //}
+  //  await fetchJugyos(); // 保存後に再取得
+  //};
   
   return (
     <Box sx={{ p: 3 }}>
@@ -153,6 +213,7 @@ export default function Timetable({jugyos,
                             variant="body2"
                             sx={{ fontWeight: 500, lineHeight: 1.2, color: levelcolor[j.kamokus?.level] }}
                           >
+			    {j.excercise? "(演)" : ""}
                             {j.kamokus?.name}
                             {j.teachers
                               ? ` ${j.teachers.fname}`
@@ -177,7 +238,7 @@ export default function Timetable({jugyos,
 	    setSelectedJugyo(null);
 	  }}
           jugyo={selectedJugyo}
-          onSaved={handleSave}
+	  onSaved={handleSave}
           isNew={false}
 	  teachers={teachers}
 	  kamokus={kamokus}

@@ -16,6 +16,23 @@ import KamokuManager from "./components/KamokuManager"
 import AvailableSlots from "./components/AvailableSlots"
 import TeacherManager from "./components/TeacherManager"
 import TermsView from "./components/TermsView"
+import AcademicCalendarManager  from "./components/AcademicCalendarManager";
+import ForbiddenManager  from "./components/ForbiddenManager";
+
+
+type CalendarPeriod = {
+  id: number;
+  year: number;
+  start_date: string;
+  end_date: string;
+  kind:
+    | "closed"
+    | "no_classes"
+    | "makeup_period"
+    | "special";
+  description: string | null;
+};
+
 
 export default function App() {
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
@@ -25,7 +42,9 @@ export default function App() {
   const [terms, setTerms] = useState<any[]>([]);
   const [wdays, setWdays] = useState<any[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  //const [forbiddens, setForbiddens] = useState<any[]>([]);
+  const [forbiddens, setForbiddens] = useState<any[]>([]);
+  const [calendarPeriods, setCalendarPeriods] =
+    useState<CalendarPeriod[]>([]);  
   
   const termNames = ["第1","第3","第4","通年","第2"]
   const [tab, setTab] = useState(0);
@@ -38,7 +57,8 @@ export default function App() {
       { data: tm, error: tmError },
       { data: w, error: wError },
       { data: d, error: dError },
-      //{ data: f, error: fError },
+      { data: f, error: fError },
+      { data: cp, error: cpError },
     ] = await Promise.all([
       supabase
 	.from("teachers")
@@ -94,6 +114,13 @@ export default function App() {
 	.order("level", { ascending: true })
 	.order("wday_id", { ascending: true })
 	.order("period", { ascending: true }),
+
+      supabase
+	.from("academic_calendar_periods")
+	.select(`id, year, start_date, end_date, kind, description`)
+	.order("year", { ascending: true })
+	.order("start_date", { ascending: true }),
+
     ]);
 
     if (tError) console.error("teachers fetch error:", tError);
@@ -101,14 +128,16 @@ export default function App() {
     if (tmError) console.error("terms fetch error:", tmError);
     if (wError) console.error("wdays fetch error:", wError);
     if (dError) console.error("departments fetch error:", dError);
-    //if (fError) console.error("forbiddens fetch error:", fError);
+    if (fError) console.error("forbiddens fetch error:", fError);
+    if (cpError) console.error("academic_calendar fetch error:", cpError);
 
     setTeachers(t || []);
     setKamokus(k || []);
     setTerms(tm || []);
     setWdays(w || []);
     setDepartments(d || []);
-    //setForbiddens(f || []);
+    setForbiddens(f || []);
+    setCalendarPeriods(cp || []);
   };
   
   const fetchJugyos = async (year = selectedYear) => {
@@ -340,11 +369,14 @@ export default function App() {
 		  <Tab label="禁則表" />
 		  <Tab label="教員" />
 		  <Tab label="ターム" />
+		  <Tab label="学年暦" />
+		  <Tab label="時間帯調整" />
 		</Tabs>
 
 		<Box sx={{ mt: 2 }}>
 		  {tab === 0 &&
 		   <JugyoManager
+		     year={selectedYear}
 		     jugyos={visibleJugyos}
 		     onSaveJugyo={handleSaveJugyo}
 		     teachers={teachers}
@@ -360,7 +392,7 @@ export default function App() {
 		     <Timetable
 		     key={"timetable" + selectedYear + "-" + term}
 		       jugyos={visibleJugyos}
-		       fetchJugyos={fetchJugyos}
+		       fetchJugyos={() => fetchJugyos(selectedYear)}
 		       year={selectedYear}
 		       termName={term}
 		       teachers={teachers}
@@ -384,7 +416,41 @@ export default function App() {
 				  departments={departments}
 				  fetchMaster={fetchMaster}
 				/>}
-		  {tab === 5 && <TermsView />}
+		  {tab === 5 &&
+		   <TermsView
+		      year={selectedYear}
+		      terms={terms.filter(
+			(term) => term.year === selectedYear
+		      )}
+		      onSaved={fetchMaster}
+		   />
+		  }
+		  {tab === 6 && (
+		    <AcademicCalendarManager
+		      year={selectedYear}
+		      periods={calendarPeriods.filter(
+			(period) => period.year === selectedYear,
+		      )}
+		      terms={terms.filter(
+			(term) => term.year === selectedYear
+		      )}
+		      onSaved={fetchMaster}
+		    />
+		  )}
+		  {tab === 7 && (
+		    <ForbiddenManager
+		      year={selectedYear}
+		      selectedDepartmentId={selectedDepartmentId}
+		      forbiddens={forbiddens.filter(
+			(f) => f.year === selectedYear,
+		      )}
+		      terms={terms.filter(
+			(term) => term.year === selectedYear
+		      )}
+		      wdays={wdays}
+		      onSaved={fetchMaster}
+		    />
+		  )}
 		</Box>
 	      </Box>
 	      {}

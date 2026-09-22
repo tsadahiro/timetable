@@ -16,6 +16,7 @@ import JugyoEditDialog from "./JugyoEditDialog";
 
 
 type JugyoManagerProps = {
+  year: number,
   jugyos: any;
   //fetchJugyos: any;
   onSaveJugyo: any;
@@ -67,7 +68,8 @@ type Jugyo = {
   } | null;
 };
 
-export default function JugyoManager({jugyos,
+export default function JugyoManager({year,
+				      jugyos,
 				      //fetchJugyos,
 				      onSaveJugyo,
 				      teachers,
@@ -110,10 +112,9 @@ export default function JugyoManager({jugyos,
 
   const handleNew = () => {
     setSelectedJugyo({
-      year: new Date().getFullYear(),
+      year: year? year: new Date().getFullYear(),
       department_id: selectedDepartmentId?? null,
       term_id: terms[0]?.id ?? 1,  // ← ソート済みの先頭
-      //teacher_id: teachers[0]?.id ?? 0,
       teacher_id: null,
       kamoku_id: 0,
       wday_id: wdays[0]?.id ?? 1,
@@ -125,55 +126,6 @@ export default function JugyoManager({jugyos,
     setOpen(true);
   };
 
-  /*
-  const handleSave = async (jugyo: any, deleted = false) => {
-    
-    if (deleted) {
-      // 削除完了時：再取得のみ実行して安全に抜ける
-      await fetchJugyos();
-      return;
-    }
-
-    if (!jugyo) return; // 念のための安全ガード
-    
-    // jugyosテーブルに存在する列だけを抽出
-    const cleanData = {
-      year: jugyo.year,
-      term_id: jugyo.term_id,
-      department_id: jugyo.department_id ?? selectedDepartmentId ?? null,
-      teacher_id: jugyo.teacher_id,
-      kamoku_id: jugyo.kamoku_id,
-      wday_id: jugyo.wday_id,
-      period: jugyo.period,
-      excercise: jugyo.excercise ?? false,
-      exception: jugyo.exception ?? false,
-      notes: jugyo.notes ?? null,
-      comment: jugyo.comment ?? null,
-      kaisuu: jugyo.kaisuu ?? null,
-    };
-
-    if (isNew) {
-      console.log(cleanData);
-      const { error } = await supabase.from("jugyos").insert(cleanData);
-      if (error) {
-	console.error("insert error", error);
-	alert("保存に失敗しました");
-	return;
-      }
-    } else if (jugyo.id) {
-      const { error } = await supabase
-	.from("jugyos")
-	.update(cleanData)
-	.eq("id", jugyo.id);
-      if (error) {
-	console.error("update error", error);
-	alert("更新に失敗しました");
-	return;
-      }
-    }
-    await fetchJugyos();
-  };
-  */
 
   return (
     <Box sx={{ p: 3 }}>
@@ -197,6 +149,7 @@ export default function JugyoManager({jugyos,
             <TableCell>学期</TableCell>
             <TableCell>教員</TableCell>
             <TableCell>科目</TableCell>
+            <TableCell>演習</TableCell>
             <TableCell>曜日</TableCell>
             <TableCell>時限</TableCell>
             <TableCell>例外</TableCell>
@@ -216,6 +169,7 @@ export default function JugyoManager({jugyos,
                   : ""}
               </TableCell>
               <TableCell>{j.kamokus?.name ?? ""}</TableCell>
+              <TableCell>{j.excercise ? "演習" : ""}</TableCell>
               <TableCell>{j.wdays?.name ?? ""}</TableCell>
               <TableCell>{j.period}</TableCell>
               <TableCell>{j.exception ? "例外" : ""}</TableCell>

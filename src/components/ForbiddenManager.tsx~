@@ -1,0 +1,17 @@
+type ForbiddenManagerProps = {
+  year: number;
+  selectedDepartmentId: number | null;
+  forbiddens: any[];
+  terms: any[];
+  wdays: any[];
+  departments: any[];
+  onSaved: () => Promise<void>;
+};
+
+export default function ForbiddenManager({
+  year, selectedDepartmentId, forbiddens, terms, wdays, departments, onSaved
+}: ForbiddenManagerProps){
+
+  return(<></>);
+
+}

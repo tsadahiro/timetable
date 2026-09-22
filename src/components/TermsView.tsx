@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Select, MenuItem, InputLabel, FormControl,
   Box, Button, Table, TableHead, TableRow, TableCell,
@@ -15,23 +15,39 @@ const abbrMap: Record<string, string> = {
 };
 const emptyForm = { year: String(currentYear), name: "第1", abbr: "T1", start: "", end: "", length: "9" };
 
+type Term = {
+  id: number;
+  name: string;
+  year: number;
+  start: string;
+  end: string;
+  abbr: string;
+  length: number;
+}
 
-export default function TermsView() {
-  const [terms, setTerms] = useState<any[]>([]);
+type Prop = {
+  year: number;
+  terms: Term[];
+  onSaved: any;
+}
+
+
+export default function TermsView({year,terms, onSaved}:Prop) {
+  //const [terms, setTerms] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
 
-  const fetchTerms = async () => {
-    const { data, error } = await supabase
-      .from("terms")
-      .select("*")
-      .order("year", { ascending: false })
-      .order("name", { ascending: true })
-      .order("id", { ascending: true });
-    if (!error) setTerms(data || []);
-  };
-
-  useEffect(() => { fetchTerms(); }, []);
+  //const fetchTerms = async () => {
+  //  const { data, error } = await supabase
+  //    .from("terms")
+  //    .select("*")
+  //    .order("year", { ascending: false })
+  //    .order("name", { ascending: true })
+  //    .order("id", { ascending: true });
+  //  if (!error) setTerms(data || []);
+  //};
+  //
+  //useEffect(() => { fetchTerms(); }, []);
 
   const handleOpen = () => { setForm(emptyForm); setOpen(true); };
   const handleClose = () => setOpen(false);
@@ -49,7 +65,7 @@ export default function TermsView() {
       end: form.end || null,
       length: form.length ? Number(form.length) : null,
     }]);
-    if (!error) { fetchTerms(); handleClose(); }
+    if (!error) { onSaved(); handleClose(); }
     else alert(error.message);
   };
 
@@ -90,7 +106,7 @@ export default function TermsView() {
       <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
         <DialogTitle>新規学期追加</DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-          <TextField label="年度" name="year" type="number" value={form.year} onChange={handleChange} size="small" required />
+          <TextField label="年度" name="year" type="number" value={year? year:form.year} onChange={handleChange} size="small" required />
 	  <FormControl size="small" required>
 	    <InputLabel>名称</InputLabel>
 	    <Select
@@ -117,56 +133,3 @@ export default function TermsView() {
     </Box>
   );
 }
-//import { useEffect, useState } from "react";
-//import {
-//  Box, Button, Table, TableHead, TableRow, TableCell,
-//  TableBody, Typography, IconButton
-//} from "@mui/material";
-//import EditIcon from "@mui/icons-material/Edit";
-//import AddIcon from "@mui/icons-material/Add";
-//import { supabase } from "../lib/supabaseClient";
-//
-//export default function TermsView() {
-//  const [terms, setTerms] = useState<any[]>([]);
-//  //const [open, setOpen] = useState(false);
-//  //const [selected, setSelected] = useState<any | null>(null);
-//  //
-//  const fetchTerms = async () => {
-//    const { data, error } = await supabase
-//      .from("terms")
-//      .select("*")
-//      .order("year", { ascending: false })
-//      .order("name", { ascending: true })
-//      .order("id", { ascending: true });
-//    if (!error) setTerms(data || []);
-//  };
-//  
-//  useEffect(() => { fetchTerms(); }, []);
-//
-//  return (
-//    <Box >
-//      <Table size="small">
-//        <TableHead>
-//          <TableRow>
-//            <TableCell>ID</TableCell>
-//            <TableCell>年度</TableCell>
-//            <TableCell></TableCell>
-//            <TableCell>開始</TableCell>
-//            <TableCell>終了</TableCell>
-//          </TableRow>
-//        </TableHead>
-//        <TableBody>
-//          {terms.map((t) => (
-//            <TableRow key={t.id}>
-//              <TableCell>{t.id}</TableCell>
-//              <TableCell>{t.year}</TableCell>
-//              <TableCell>{t.name}</TableCell>
-//              <TableCell>{t.start}</TableCell>
-//              <TableCell>{t.end}</TableCell>
-//            </TableRow>
-//          ))}
-//        </TableBody>
-//      </Table>
-//    </Box>
-//  );
-//}

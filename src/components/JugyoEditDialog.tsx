@@ -6,6 +6,8 @@ import {
   Button,
   TextField,
   MenuItem,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -26,7 +28,11 @@ export default function JugyoEditDialog({
   open: boolean;
   onClose: () => void;
   jugyo: any;
-  onSaved: (jugyo: any | null, deleted?: boolean) => void; // 👈 削除対応
+  onSaved: (
+    jugyo: any | null,
+    deleted?: boolean
+  ) => void | Promise<void>;
+  //onSaved: (jugyo: any | null, deleted?: boolean) => void; // 👈 削除対応
   isNew?: boolean;
   teachers: any[];
   kamokus: any[];
@@ -57,7 +63,7 @@ export default function JugyoEditDialog({
       alert("削除に失敗しました。");
       console.error(error);
     } else {
-      onSaved(null, true); // 👈 親に削除完了を通知
+      await onSaved(null, true); // 👈 親に削除完了を通知
       onClose();
     }
   };
@@ -181,6 +187,8 @@ export default function JugyoEditDialog({
             setCurrent({ ...current, period: Number(e.target.value) })
           }
         />
+
+	
 	<TextField
 	  margin="dense"
 	  label="回数"
@@ -191,8 +199,26 @@ export default function JugyoEditDialog({
 	    setCurrent({ ...current, kaisuu: Number(e.target.value) })
 	  }
 	/>	
+
+	<FormControlLabel
+	  sx={{ mt: 1, display: "block" }}
+	     control={
+	       <Checkbox
+		 checked={current.excercise ?? false}
+		 onChange={(e) =>
+		   setCurrent({
+		     ...current,
+		     excercise: e.target.checked,
+		   })
+		 }
+	       />
+	     }
+	     label="この時限は演習枠"
+	/>
+
       </DialogContent>
 
+      
       <DialogActions>
         {!isNew && (
           <Button color="error" onClick={handleDelete}>
@@ -203,13 +229,22 @@ export default function JugyoEditDialog({
 	<Button
 	  variant="contained"
 	  onClick={async () => {
-	    console.log(current.kaisuu);
-	    await onSaved(current);  
-	    onClose();               
+	    try {
+	      await onSaved(current);
+	      onClose();
+	    } catch (error: unknown) {
+	      const message =
+		error &&
+		typeof error === "object" &&
+		"message" in error
+		? String(error.message)
+		: "授業の保存に失敗しました。";
+	      alert(`保存できませんでした。\n${message}`);
+	    }
 	  }}
 	>
 	  {isNew ? "作成" : "保存"}
-	</Button>
+	</Button>	
       </DialogActions>
     </Dialog>
   );
