@@ -1,0 +1,475 @@
+import {
+  Alert,
+  Box,
+  Button,
+  MenuItem,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Tab,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
+import { DayPicker, type DateRange } from "@daypicker/react";
+import { ja } from "@daypicker/react/locale";
+import "@daypicker/react/style.css";
+import { supabase } from "../lib/supabaseClient";
+
+type CalendarPeriodKind = "closed" | "no_classes"  | "makeup_period" | "special";
+
+type Term = {
+  id: number;
+  name: string | null;
+  year: number | null;
+  start: string | null;
+  end: string | null;
+  abbr: string | null;
+  length: number | null;
+};
+
+type CalendarPeriod = {
+  id: number;
+  year: number;
+  start_date: string;
+  end_date: string;
+  kind: CalendarPeriodKind;
+  description: string | null;
+};
+
+type Props = {
+  year: number;
+  periods: CalendarPeriod[];
+  terms: Term[];
+  onSaved: () => Promise<void>;
+};
+
+const kindLabels: Record<CalendarPeriodKind, string> = {
+  closed: "休校",
+  no_classes: "全学一斉休講",
+  makeup_period: "補講期間",
+  special: "その他",
+};
+
+function formatDateForDb(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function parseDbDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
+function formatDateForDisplay(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  }).format(parseDbDate(value));
+}
+
+export default function AcademicCalendarManager({ year, periods, terms, onSaved }: Props) {
+  //const [periods, setPeriods] = useState<CalendarPeriod[]>([]);
+  const [range, setRange] = useState<DateRange | undefined>();
+  const [kind, setKind] = useState<CalendarPeriodKind>("closed");
+  const [description, setDescription] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [calendarTab, setCalendarTab] = useState(0);
+  
+  const academicYearStart = useMemo(() => new Date(year, 3, 1), [year]);
+  const academicYearEnd = useMemo(() => new Date(year + 1, 2, 31), [year]);
+
+  useEffect(() => {
+    setRange(undefined);
+    setKind("closed");
+    setDescription("");
+    setEditingId(null);
+    setMessage(null);
+    setErrorMessage(null);
+  }, [year]);
+  
+  const resetForm = () => {
+    setRange(undefined);
+    setKind("closed");
+    setDescription("");
+    setEditingId(null);
+  };
+
+  const handleSave = async () => {
+    if (!range?.from) {
+      setErrorMessage("カレンダーで開始日を選択してください。");
+      return;
+    }
+
+    const from = range.from;
+    const to = range.to ?? range.from;
+
+    if (from < academicYearStart || to > academicYearEnd) {
+      setErrorMessage(`${year}年度の範囲内で選択してください。`);
+      return;
+    }
+
+    const payload = {
+      year,
+      start_date: formatDateForDb(from),
+      end_date: formatDateForDb(to),
+      kind,
+      description: description.trim() || null,
+    };
+
+    setSaving(true);
+    setMessage(null);
+    setErrorMessage(null);
+
+    const { error } = editingId
+      ? await supabase
+          .from("academic_calendar_periods")
+          .update(payload)
+          .eq("id", editingId)
+      : await supabase.from("academic_calendar_periods").insert(payload);
+
+    setSaving(false);
+
+    if (error) {
+      console.error(error);
+      setErrorMessage(
+        editingId ? "学年暦の更新に失敗しました。" : "学年暦の登録に失敗しました。",
+      );
+      return;
+    }
+
+    setMessage(editingId ? "学年暦を更新しました。" : "学年暦を登録しました。");
+    resetForm();
+    await onSaved();
+  };
+
+  const handleEdit = (period: CalendarPeriod) => {
+    setEditingId(period.id);
+    setKind(period.kind);
+    setDescription(period.description ?? "");
+    setRange({
+      from: parseDbDate(period.start_date),
+      to: parseDbDate(period.end_date),
+    });
+    setMessage(null);
+    setErrorMessage(null);
+  };
+
+  const handleDelete = async (period: CalendarPeriod) => {
+    const ok = window.confirm(
+      `${formatDateForDisplay(period.start_date)}から${formatDateForDisplay(
+        period.end_date,
+      )}までの「${kindLabels[period.kind]}」を削除しますか？`,
+    );
+
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("academic_calendar_periods")
+      .delete()
+      .eq("id", period.id);
+
+    if (error) {
+      console.error(error);
+      setErrorMessage("削除に失敗しました。");
+      return;
+    }
+
+    if (editingId === period.id) resetForm();
+    setMessage("学年暦から削除しました。");
+    await onSaved();
+  };
+
+  const selectedStart = range?.from
+    ? formatDateForDisplay(formatDateForDb(range.from))
+    : "未選択";
+  const selectedEnd = range?.from
+    ? formatDateForDisplay(formatDateForDb(range.to ?? range.from))
+		    : "未選択";
+
+  const isDateInRange = (
+    date: Date,
+    start: string | null,
+    end: string | null
+  ) => {
+    if (!start || !end) return false;
+    
+    const target = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate()
+    );
+
+    const from = new Date(`${start}T00:00:00`);
+    const to = new Date(`${end}T00:00:00`);
+
+    return target >= from && target <= to;
+  };
+
+  const isTeachingDay = (date: Date) => {
+    const day = date.getDay();
+
+    // 日曜・土曜を除外
+    if (day === 0 || day === 6) return false;
+
+    // 「通年」は第1・第3・第4タームを包含するので判定から外す
+    const inTerm = terms
+      .filter((term) => term.name !== "通年")
+      .some((term) =>
+	isDateInRange(date, term.start, term.end)
+      );
+
+    if (!inTerm) return false;
+
+    // 休校日・休講日は授業日から除外
+    const isExcluded = periods
+      .filter(
+	(period:CalendarPeriod) =>
+          period.kind === "closed" ||
+		  period.kind === "no_classes"
+      )
+      .some((period:CalendarPeriod) =>
+	isDateInRange(
+          date,
+          period.start_date,
+          period.end_date
+	)
+      );
+
+    return !isExcluded;
+  };
+
+  const calendarPeriodEditor = (
+    <Stack spacing={3} sx={{ p: 2 }}>
+      <Typography variant="h5">{year}年度 学年暦</Typography>
+
+      {message && <Alert severity="success">{message}</Alert>}
+      {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <Typography variant="h6">
+            {editingId ? "期間の編集" : "休校・一斉休講期間の登録"}
+          </Typography>
+	  
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+            <TextField
+	      select
+	      label="区分"
+		     value={kind}
+		     onChange={(event) =>
+                       setKind(event.target.value as CalendarPeriodKind)
+		     }
+		     sx={{ minWidth: 200 }}
+            >
+	      {Object.entries(kindLabels).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
+                </MenuItem>
+	      ))}
+            </TextField>
+
+            <TextField
+	      label="説明"
+		     value={description}
+		     onChange={(event) => setDescription(event.target.value)}
+		     placeholder="例：大学祭、夏季休業"
+		     fullWidth
+            />
+          </Stack>
+
+          <Box sx={{ overflowX: "auto" }}>
+            <DayPicker
+              key={year}
+              animate
+              mode="range"
+              selected={range}
+              onSelect={setRange}
+              resetOnSelect
+              numberOfMonths={2}
+              defaultMonth={academicYearStart}
+              startMonth={academicYearStart}
+              endMonth={academicYearEnd}
+              locale={ja}
+              weekStartsOn={0}
+            />
+          </Box>
+
+          <Typography>
+            選択期間：{selectedStart} ～ {selectedEnd}
+          </Typography>
+
+          <Stack direction="row" spacing={1} justifyContent="flex-end">
+            {editingId && (
+              <Button onClick={resetForm} disabled={saving}>
+                編集を取消
+              </Button>
+            )}
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={!range?.from || saving}
+            >
+              {saving ? "保存中…" : editingId ? "更新" : "登録"}
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          登録済み期間
+        </Typography>
+
+        {periods.length === 0 ? (
+          <Typography color="text.secondary">
+            {year}年度の登録はありません。
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>開始日</TableCell>
+                  <TableCell>終了日</TableCell>
+                  <TableCell>区分</TableCell>
+                  <TableCell>説明</TableCell>
+                  <TableCell align="right">操作</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {periods.map((period:CalendarPeriod) => (
+                  <TableRow key={period.id} hover>
+                    <TableCell>
+                      {formatDateForDisplay(period.start_date)}
+                    </TableCell>
+                    <TableCell>
+                      {formatDateForDisplay(period.end_date)}
+                    </TableCell>
+                    <TableCell>{kindLabels[period.kind]}</TableCell>
+                    <TableCell>{period.description || "—"}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" onClick={() => handleEdit(period)}>
+                        編集
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        onClick={() => handleDelete(period)}
+                      >
+                        削除
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+      </Stack>
+  );
+
+
+    const academicYearCalendar = (
+      <Box
+	sx={{
+	  overflowX: "auto",
+	  "& .rdp-months": {
+	    display: "grid",
+	    gridTemplateColumns: {
+	      xs: "1fr",
+	      md: "repeat(2, 1fr)",
+	      lg: "repeat(3, 1fr)",
+	    },
+	    gap: 3,
+	  },
+	}}
+      >
+	<DayPicker
+	  key={year}
+	      month={new Date(year, 3, 1)}
+	      numberOfMonths={12}
+	      startMonth={new Date(year, 3, 1)}
+	      endMonth={new Date(year + 1, 2, 31)}
+	      hideNavigation
+	  locale={ja}
+	  weekStartsOn={0}
+	  modifiers={{
+	    teachingDay: isTeachingDay,
+	    
+	    closed: periods
+	      .filter((period:CalendarPeriod) => period.kind === "closed")
+	      .map((period:CalendarPeriod) => ({
+		from: parseDbDate(period.start_date),
+		to: parseDbDate(period.end_date),
+	      })),
+
+	    noClasses: periods
+	      .filter((period:CalendarPeriod) => period.kind === "no_classes")
+	      .map((period:CalendarPeriod) => ({
+		from: parseDbDate(period.start_date),
+		to: parseDbDate(period.end_date),
+	      })),
+
+	    makeupPeriod: periods
+	      .filter(
+		(period:any) => period.kind === "makeup_period",
+	      )
+	      .map((period:any) => ({
+		from: parseDbDate(period.start_date),
+		to: parseDbDate(period.end_date),
+	      })),
+	  }}
+	  modifiersStyles={{
+	    teachingDay: {
+	      backgroundColor: "#e3f2fd",
+	      color: "#1565c0",
+	    },
+	    closed: {
+	      backgroundColor: "#ffcdd2",
+	      color: "#b71c1c",
+	    },
+	    noClasses: {
+	      backgroundColor: "#ffe0b2",
+	      color: "#e65100",
+	    },
+	    makeupPeriod: {
+	      backgroundColor: "#c8e6c9",
+	      color: "#1b5e20",
+	    },
+	  }}
+	/>
+      </Box>
+    );
+
+  
+  return (
+    <Stack spacing={2}>
+      <Tabs
+	value={calendarTab}
+	onChange={(_, value) => setCalendarTab(value)}
+      >
+	<Tab label="カレンダー" />
+	<Tab label="期間編集" />
+      </Tabs>
+
+      {calendarTab === 0 && academicYearCalendar}
+      {calendarTab === 1 && calendarPeriodEditor}
+    </Stack>
+  );
+
+}

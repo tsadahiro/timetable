@@ -422,6 +422,7 @@ export default function App() {
 		      terms={terms.filter(
 			(term) => term.year === selectedYear
 		      )}
+		     calendarPeriods={calendarPeriods}
 		      onSaved={fetchMaster}
 		   />
 		  }

@@ -21,6 +21,8 @@ type ForbiddenManagerProps = {
   onSaved: () => Promise<void>;
 };
 
+const STANDARD_WDAY_NAMES = new Set(["月", "火", "水", "木", "金"]);
+
 export default function ForbiddenManager({
   year,
   selectedDepartmentId,
@@ -28,35 +30,51 @@ export default function ForbiddenManager({
   wdays,
   terms,
 }: ForbiddenManagerProps) {
-  const visibleForbiddens = forbiddens
-    .filter((forbidden) => {
-      if (Number(forbidden.year) !== Number(year)) {
-        return false;
-      }
+  const visibleForbiddens = forbiddens.filter((forbidden) => {
+    if (Number(forbidden.year) !== Number(year)) {
+      return false;
+    }
 
-      // 「全学科」のときは、共通規則と学科固有規則をすべて表示する。
-      if (selectedDepartmentId === null) {
-        return true;
-      }
+    // 「全学科」のときは、共通規則と学科固有規則をすべて表示する。
+    if (selectedDepartmentId === null) {
+      return true;
+    }
 
-      // 学科を選んだときは、全学科共通または当該学科の規則を表示する。
-      return (
-        forbidden.department_id === null ||
-        forbidden.department_id === undefined ||
-        Number(forbidden.department_id) === Number(selectedDepartmentId)
-      );
-    })
+    // 学科を選んだときは、全学科共通または当該学科の規則を表示する。
+    return (
+      forbidden.department_id == null ||
+      Number(forbidden.department_id) === Number(selectedDepartmentId)
+    );
+  });
+
+  const usedWdayIds = new Set(
+    visibleForbiddens
+      .map((forbidden) => forbidden.wday_id)
+      .filter((id) => id != null)
+      .map(Number),
+  );
+
+  // 月〜金は常に表示し、土日などは禁則が登録されているときだけ表示する。
+  const displayWdays = wdays
+    .filter(
+      (wday) =>
+        STANDARD_WDAY_NAMES.has(wday.name) || usedWdayIds.has(Number(wday.id)),
+    )
     .sort(
       (a, b) =>
-        Number(a.term_id ?? 0) - Number(b.term_id ?? 0) ||
-        Number(a.level ?? 0) - Number(b.level ?? 0) ||
-        Number(a.wday_id ?? 0) - Number(b.wday_id ?? 0) ||
-        Number(a.period ?? 0) - Number(b.period ?? 0) ||
-        Number(a.id) - Number(b.id),
+        Number(a.orderkey ?? a.id) - Number(b.orderkey ?? b.id),
     );
 
+  const maxPeriod = Math.max(
+    5,
+    ...visibleForbiddens
+      .map((forbidden) => Number(forbidden.period))
+      .filter((period) => Number.isFinite(period) && period > 0),
+  );
+  const periods = Array.from({ length: maxPeriod }, (_, index) => index + 1);
+
   const termName = (termId: number | null) => {
-    if (termId === null || termId === undefined) {
+    if (termId == null) {
       return "全ターム";
     }
 
@@ -66,14 +84,123 @@ export default function ForbiddenManager({
     );
   };
 
-  const wdayName = (wdayId: number | null) => {
-    if (wdayId === null || wdayId === undefined) {
-      return "未指定";
-    }
+  const termOrder = (termId: number | null) => {
+    const order: Record<string, number> = {
+      "全ターム": 0,
+      通年: 0,
+      第1: 1,
+      第2: 2,
+      第3: 3,
+      第4: 4,
+    };
+
+    return order[termName(termId)] ?? 99;
+  };
+
+  const rulesAt = (wdayId: number, period: number) =>
+    visibleForbiddens
+      .filter(
+        (forbidden) =>
+          Number(forbidden.wday_id) === Number(wdayId) &&
+          Number(forbidden.period) === period,
+      )
+      .sort(
+        (a, b) =>
+          termOrder(a.term_id) - termOrder(b.term_id) ||
+          Number(a.level ?? 0) - Number(b.level ?? 0) ||
+          Number(a.id) - Number(b.id),
+      );
+
+  const unscheduledRules = visibleForbiddens.filter(
+    (forbidden) => forbidden.wday_id == null || forbidden.period == null,
+  );
+
+  const LEVEL_CHIP_STYLES: Record<
+  number,
+	{ backgroundColor: string; color: string }
+  > = {
+    1: {
+      backgroundColor: "#d32f2f", // 赤
+      color: "#ffffff",
+    },
+    2: {
+      backgroundColor: "#1976d2", // 青
+      color: "#ffffff",
+    },
+    3: {
+      backgroundColor: "#ff9800", // オレンジ
+      color: "#000000",
+    },
+    4: {
+      backgroundColor: "#2e7d32", // グリーン
+      color: "#ffffff",
+    },
+  };
+  
+  const RuleCard = ({ forbidden }: { forbidden: any }) => {
+    const categories = [
+      forbidden.hisshu ? "必修" : null,
+      forbidden.sentaku ? "選択" : null,
+      forbidden.shwaku ? "資格枠" : null,
+    ].filter((label): label is string => label !== null);
 
     return (
-      wdays.find((wday) => Number(wday.id) === Number(wdayId))?.name ??
-      `不明（ID: ${wdayId}）`
+      <Paper
+        variant="outlined"
+        sx={{
+          p: 1,
+          bgcolor:
+            forbidden.department_id == null
+              ? "grey.50"
+              : "rgba(25, 118, 210, 0.05)",
+        }}
+      >
+        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+          <Chip label={termName(forbidden.term_id)} size="small" />
+          <Chip
+	    label={
+	    forbidden.level != null
+	    ? `${forbidden.level}年`
+	    : "全学年"
+	    }
+	    size="small"
+	    sx={{
+	      ...(forbidden.level != null
+		? LEVEL_CHIP_STYLES[Number(forbidden.level)]
+		: {
+		  backgroundColor: "#757575",
+		  color: "#ffffff",
+              }),
+	      fontWeight: "bold",
+	    }}
+	  />
+          {categories.map((category) => (
+            <Chip
+              key={category}
+              label={category}
+              size="small"
+              color={category === "必修" ? "error" : "warning"}
+              variant="outlined"
+            />
+          ))}
+        </Stack>
+
+        <Typography variant="body2" sx={{ mt: 0.75, lineHeight: 1.35 }}>
+          {forbidden.reason || "理由未入力"}
+        </Typography>
+
+        {selectedDepartmentId === null && (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", mt: 0.5 }}
+          >
+            {forbidden.department_id == null
+              ? "全学科共通"
+              : `学科ID ${forbidden.department_id}`}
+          </Typography>
+        )}
+      </Paper>
     );
   };
 
@@ -86,121 +213,110 @@ export default function ForbiddenManager({
         spacing={1}
         sx={{ mb: 2 }}
       >
-        <Typography variant="h5">
-          {year}年度 時間帯調整資料
-        </Typography>
-
+        <Typography variant="h5">{year}年度 禁則表</Typography>
         <Typography variant="body2" color="text.secondary">
           {visibleForbiddens.length}件
         </Typography>
       </Stack>
 
       <TableContainer component={Paper} variant="outlined">
-        <Table size="small" aria-label={`${year}年度の禁則一覧`}>
+        <Table
+          size="small"
+          aria-label={`${year}年度の曜日・時限別禁則表`}
+          sx={{ tableLayout: "fixed", minWidth: 900 }}
+        >
           <TableHead>
             <TableRow sx={{ bgcolor: "grey.100" }}>
-              <TableCell>ID</TableCell>
-              <TableCell>ターム</TableCell>
-              <TableCell>学年</TableCell>
-              <TableCell>曜日</TableCell>
-              <TableCell>時限</TableCell>
-              <TableCell>対象</TableCell>
-              <TableCell>理由</TableCell>
-              <TableCell>適用学科</TableCell>
+              <TableCell
+                align="center"
+                sx={{ width: 72, fontWeight: "bold" }}
+              >
+                曜日
+              </TableCell>
+              {periods.map((period) => (
+                <TableCell
+                  key={period}
+                  align="center"
+                  sx={{ fontWeight: "bold" }}
+                >
+                  {period}限
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {visibleForbiddens.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} align="center">
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ py: 2 }}
-                  >
-                    該当する禁則はありません。
-                  </Typography>
+            {displayWdays.map((wday) => (
+              <TableRow key={wday.id}>
+                <TableCell
+                  component="th"
+                  scope="row"
+                  align="center"
+                  sx={{
+                    bgcolor: "grey.50",
+                    fontWeight: "bold",
+                    verticalAlign: "top",
+                  }}
+                >
+                  {wday.name}曜日
                 </TableCell>
-              </TableRow>
-            ) : (
-              visibleForbiddens.map((forbidden) => {
-                const categories = [
-                  forbidden.hisshu
-                    ? { label: "必修", color: "error" as const }
-                    : null,
-                  forbidden.sentaku
-                    ? { label: "選択", color: "warning" as const }
-                    : null,
-                  forbidden.shwaku
-                    ? { label: "資格枠", color: "info" as const }
-                    : null,
-                ].filter(
-                  (
-                    item,
-                  ): item is {
-                    label: string;
-                    color: "error" | "warning" | "info";
-                  } => item !== null,
-                );
 
-                return (
-                  <TableRow key={forbidden.id} hover>
-                    <TableCell>{forbidden.id}</TableCell>
-                    <TableCell>{termName(forbidden.term_id)}</TableCell>
-                    <TableCell>
-                      {forbidden.level != null
-                        ? `${forbidden.level}年`
-                        : "全学年"}
+                {periods.map((period) => {
+                  const rules = rulesAt(wday.id, period);
+
+                  return (
+                    <TableCell
+                      key={period}
+                      sx={{
+                        p: 0.75,
+                        height: 88,
+                        verticalAlign: "top",
+                        bgcolor:
+                          rules.length > 0
+                            ? "rgba(211, 47, 47, 0.04)"
+                            : "inherit",
+                      }}
+                    >
+                      <Stack spacing={0.75}>
+                        {rules.map((forbidden) => (
+                          <RuleCard
+                            key={forbidden.id}
+                            forbidden={forbidden}
+                          />
+                        ))}
+                      </Stack>
                     </TableCell>
-                    <TableCell>{wdayName(forbidden.wday_id)}</TableCell>
-                    <TableCell>
-                      {forbidden.period != null
-                        ? `${forbidden.period}限`
-                        : "未指定"}
-                    </TableCell>
-                    <TableCell>
-                      {categories.length === 0 ? (
-                        <Typography variant="body2" color="text.secondary">
-                          指定なし
-                        </Typography>
-                      ) : (
-                        <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                          {categories.map((category) => (
-                            <Chip
-                              key={category.label}
-                              label={category.label}
-                              color={category.color}
-                              size="small"
-                              variant="outlined"
-                            />
-                          ))}
-                        </Stack>
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ minWidth: 240 }}>
-                      {forbidden.reason ?? (
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          color="text.secondary"
-                        >
-                          理由未入力
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {forbidden.department_id == null
-                        ? "全学科共通"
-                        : `学科ID ${forbidden.department_id}`}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
+                  );
+                })}
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {visibleForbiddens.length === 0 && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          align="center"
+          sx={{ mt: 2 }}
+        >
+          該当する禁則はありません。
+        </Typography>
+      )}
+
+      {unscheduledRules.length > 0 && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            曜日・時限未指定
+          </Typography>
+          <Stack spacing={1}>
+            {unscheduledRules.map((forbidden) => (
+              <RuleCard key={forbidden.id} forbidden={forbidden} />
+            ))}
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
 }
