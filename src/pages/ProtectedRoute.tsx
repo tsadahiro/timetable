@@ -29,7 +29,8 @@ export default function ProtectedRoute({ children }: { children: any }) {
 				"kishi@tsuda.ac.jp",
 				"kurihara@tsuda.ac.jp",
 				"aiko.uemura@tsuda.ac.jp",
-				"hiroaki@tsuda.ac.jp"
+				"hiroaki@tsuda.ac.jp",
+				"sachiyo.ueda@tsuda.ac.jp",
       ]; //  許可するユーザ
       const isAllowed = allowedAddresses.includes(email)
       
