@@ -1,8 +1,7 @@
 import EditIcon from "@mui/icons-material/Edit";
 import IconButton from "@mui/material/IconButton";
 import TeacherEditDialog from "./TeacherEditDialog";
-import { useState } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -10,6 +9,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -62,13 +65,52 @@ export default function TeacherManager({
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [teacherJugyos, setTeacherJugyos] = useState<Jugyo[]>([]);
+  const [recentYears, setRecentYears] = useState<number | "all">(5);
 
-  const teachersWithKaisuu = teachers.map((t) => ({
-    ...t,
-    kaisuu2026: jugyos
-      .filter((j) => j.teacher_id === t.id && j.year === year)
-      .reduce((sum, j) => sum + (j.kaisuu || 0), 0),
-  }));
+  const teachersWithKaisuu = useMemo(
+    () =>
+      teachers.map((t) => ({
+        ...t,
+        kaisuu2026: jugyos
+          .filter((j) => j.teacher_id === t.id && j.year === year)
+          .reduce((sum, j) => sum + (j.kaisuu || 0), 0),
+      })),
+    [teachers, jugyos, year],
+  );
+
+  const lastTeachingYearByTeacher = useMemo(() => {
+    const result = new Map<number, number>();
+
+    jugyos.forEach((jugyo) => {
+      if (jugyo.teacher_id == null || jugyo.year > year) return;
+
+      const previous = result.get(jugyo.teacher_id);
+      if (previous == null || jugyo.year > previous) {
+        result.set(jugyo.teacher_id, jugyo.year);
+      }
+    });
+
+    return result;
+  }, [jugyos, year]);
+
+  const visibleTeachers = useMemo(
+    () =>
+      teachersWithKaisuu.filter((teacher) => {
+        // 常勤教員は担当年度にかかわらず常に表示する。
+        if (teacher.joukin || recentYears === "all") return true;
+
+        const lastYear = lastTeachingYearByTeacher.get(teacher.id);
+        if (lastYear == null) return false;
+
+        return lastYear >= year - recentYears + 1;
+      }),
+    [
+      teachersWithKaisuu,
+      recentYears,
+      lastTeachingYearByTeacher,
+      year,
+    ],
+  );
 
   const teacherNameById = useMemo(
     () =>
@@ -117,30 +159,65 @@ export default function TeacherManager({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" gutterBottom>
-        教員一覧
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 2,
+          mb: 2,
+        }}
+      >
+        <Typography variant="h5">教員一覧</Typography>
+
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel id="recent-part-time-years-label">
+              非常勤の表示範囲
+            </InputLabel>
+            <Select
+              labelId="recent-part-time-years-label"
+              value={recentYears}
+              label="非常勤の表示範囲"
+              onChange={(event) =>
+                setRecentYears(event.target.value as number | "all")
+              }
+            >
+              <MenuItem value={1}>{year}年度のみ</MenuItem>
+              <MenuItem value={3}>直近3年度</MenuItem>
+              <MenuItem value={5}>直近5年度</MenuItem>
+              <MenuItem value={10}>直近10年度</MenuItem>
+              <MenuItem value="all">すべて</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Button
+            variant="contained"
+            onClick={() => {
+              setSelectedTeacher({
+                fname: "",
+                gname: "",
+                fyomi: "",
+                gyomi: "",
+                joukin: true,
+                honmuko: "",
+                department_id: selectedDepartmentId,
+              } as Teacher);
+              setEditOpen(true);
+            }}
+          >
+            新規追加
+          </Button>
+        </Box>
+      </Box>
+
+      <Typography variant="caption" color="text.secondary">
+        常勤教員は常に表示します。非常勤教員は{year}年度を基準に絞り込みます。
       </Typography>
 
-    {/* 新規追加ボタン */}
-    <Button
-      variant="contained"
-      onClick={() => {
-	setSelectedTeacher({
-	  fname: "",
-	  gname: "",
-	  fyomi: "",
-	  gyomi: "",
-	  joukin: true,
-	  honmuko: "",
-	  department_id: selectedDepartmentId,
-	} as Teacher);
-	setEditOpen(true);
-      }}
-    >
-      新規追加
-    </Button>
       {/* 教員一覧テーブル */}
-      <Table size="small">
+      <Table size="small" sx={{ mt: 1 }}>
         <TableHead>
           <TableRow>
             <TableCell>ID</TableCell>
@@ -154,7 +231,7 @@ export default function TeacherManager({
           </TableRow>
         </TableHead>
         <TableBody>
-          {teachersWithKaisuu.map((t) => (
+          {visibleTeachers.map((t) => (
 	    <TableRow key={t.id} hover>
 	      <TableCell>{t.id}</TableCell>
 	      <TableCell
