@@ -18,7 +18,7 @@ import TeacherManager from "./components/TeacherManager"
 import TermsView from "./components/TermsView"
 import AcademicCalendarManager  from "./components/AcademicCalendarManager";
 import ForbiddenManager  from "./components/ForbiddenManager";
-
+import TantoTable from "./components/TantoTable";
 
 type CalendarPeriod = {
   id: number;
@@ -305,6 +305,23 @@ export default function App() {
     selectedDepartmentId !== null
     ? teachers.filter((t) => t.department_id === selectedDepartmentId)
     : teachers;
+
+  //const candidateKamokus = kamokus.filter((k) => {
+  //  // 旧学科：数学科・情報科学科
+  //  if (k.department_id === 1 || k.department_id === 2) {
+  //    return (
+  //	k.introduced >= 2017 &&
+  //	k.level > selectedYear - 2027
+  //    );
+  //  }
+  //
+  //  // 新学科：データサイエンス
+  //  if (k.department_id === 3) {
+  //    return k.level <= selectedYear - 2027;
+  //  }
+  //  
+  //  return false;
+  //});
   
   return (
     <>
@@ -366,6 +383,7 @@ export default function App() {
 		  <Tab label="授業" />
 		  <Tab label="時間割" />
 		  <Tab label="科目" />
+		  <Tab label="担当表" />
 		  <Tab label="禁則表" />
 		  <Tab label="教員" />
 		  <Tab label="ターム" />
@@ -407,8 +425,17 @@ export default function App() {
 				  kamokus={visibleKamokus}
 				  fetchMaster={fetchMaster}
 				/>}
-		  {tab === 3 && availables}
-		  {tab === 4 && <TeacherManager
+		  {tab === 3 && (
+		    <TantoTable
+		      year={selectedYear}
+		      kamokus={kamokus}
+		      jugyos={jugyos}
+		      teachers={teachers}
+		      departments={departments}
+		    />
+		  )}
+		  {tab === 4 && availables}
+		  {tab === 5 && <TeacherManager
 				  year={selectedYear}
 				  selectedDepartmentId={selectedDepartmentId}
 				  teachers={visibleTeachers}
@@ -416,7 +443,7 @@ export default function App() {
 				  departments={departments}
 				  fetchMaster={fetchMaster}
 				/>}
-		  {tab === 5 &&
+		  {tab === 6 &&
 		   <TermsView
 		      year={selectedYear}
 		      terms={terms.filter(
@@ -426,7 +453,7 @@ export default function App() {
 		      onSaved={fetchMaster}
 		   />
 		  }
-		  {tab === 6 && (
+		  {tab === 7 && (
 		    <AcademicCalendarManager
 		      year={selectedYear}
 		      periods={calendarPeriods.filter(
@@ -438,17 +465,14 @@ export default function App() {
 		      onSaved={fetchMaster}
 		    />
 		  )}
-		  {tab === 7 && (
+		  {tab === 8 && (
 		    <ForbiddenManager
 		      year={selectedYear}
 		      selectedDepartmentId={selectedDepartmentId}
-		      forbiddens={forbiddens.filter(
-			(f) => f.year === selectedYear,
-		      )}
-		      terms={terms.filter(
-			(term) => term.year === selectedYear
-		      )}
+		      forbiddens={forbiddens}
 		      wdays={wdays}
+		      terms={visibleTerms}
+		      departments={departments}
 		      onSaved={fetchMaster}
 		    />
 		  )}

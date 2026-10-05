@@ -1,6 +1,10 @@
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
 import {
   Box,
+  Button,
   Chip,
+  IconButton,
   Paper,
   Stack,
   Table,
@@ -9,8 +13,12 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import { useState } from "react";
+import ForbiddenEditDialog from "./ForbiddenEditDialog";
+import type { Forbidden } from "./ForbiddenEditDialog";
 
 type ForbiddenManagerProps = {
   year: number;
@@ -18,6 +26,7 @@ type ForbiddenManagerProps = {
   forbiddens: any[];
   wdays: any[];
   terms: any[];
+  departments?: any[];
   onSaved: () => Promise<void>;
 };
 
@@ -29,7 +38,13 @@ export default function ForbiddenManager({
   forbiddens,
   wdays,
   terms,
+  departments = [],
+  onSaved,
 }: ForbiddenManagerProps) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedForbidden, setSelectedForbidden] =
+    useState<Forbidden | null>(null);
+
   const visibleForbiddens = forbiddens.filter((forbidden) => {
     if (Number(forbidden.year) !== Number(year)) {
       return false;
@@ -115,28 +130,6 @@ export default function ForbiddenManager({
     (forbidden) => forbidden.wday_id == null || forbidden.period == null,
   );
 
-  const LEVEL_CHIP_STYLES: Record<
-  number,
-	{ backgroundColor: string; color: string }
-  > = {
-    1: {
-      backgroundColor: "#d32f2f", // 赤
-      color: "#ffffff",
-    },
-    2: {
-      backgroundColor: "#1976d2", // 青
-      color: "#ffffff",
-    },
-    3: {
-      backgroundColor: "#ff9800", // オレンジ
-      color: "#000000",
-    },
-    4: {
-      backgroundColor: "#2e7d32", // グリーン
-      color: "#ffffff",
-    },
-  };
-  
   const RuleCard = ({ forbidden }: { forbidden: any }) => {
     const categories = [
       forbidden.hisshu ? "必修" : null,
@@ -149,31 +142,38 @@ export default function ForbiddenManager({
         variant="outlined"
         sx={{
           p: 1,
+          pr: 4,
+          position: "relative",
           bgcolor:
             forbidden.department_id == null
               ? "grey.50"
               : "rgba(25, 118, 210, 0.05)",
         }}
       >
+        <Tooltip title="編集">
+          <IconButton
+            size="small"
+            aria-label="禁則を編集"
+            onClick={() => {
+              setSelectedForbidden(forbidden);
+              setEditOpen(true);
+            }}
+            sx={{ position: "absolute", top: 2, right: 2 }}
+          >
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
         <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
           <Chip label={termName(forbidden.term_id)} size="small" />
           <Chip
-	    label={
-	    forbidden.level != null
-	    ? `${forbidden.level}年`
-	    : "全学年"
-	    }
-	    size="small"
-	    sx={{
-	      ...(forbidden.level != null
-		? LEVEL_CHIP_STYLES[Number(forbidden.level)]
-		: {
-		  backgroundColor: "#757575",
-		  color: "#ffffff",
-              }),
-	      fontWeight: "bold",
-	    }}
-	  />
+            label={
+              forbidden.level != null ? `${forbidden.level}年` : "全学年"
+            }
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
           {categories.map((category) => (
             <Chip
               key={category}
@@ -214,9 +214,22 @@ export default function ForbiddenManager({
         sx={{ mb: 2 }}
       >
         <Typography variant="h5">{year}年度 禁則表</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {visibleForbiddens.length}件
-        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            {visibleForbiddens.length}件
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setSelectedForbidden(null);
+              setEditOpen(true);
+            }}
+          >
+            新規追加
+          </Button>
+        </Stack>
       </Stack>
 
       <TableContainer component={Paper} variant="outlined">
@@ -317,6 +330,18 @@ export default function ForbiddenManager({
           </Stack>
         </Box>
       )}
+
+      <ForbiddenEditDialog
+        open={editOpen}
+        forbidden={selectedForbidden}
+        year={year}
+        selectedDepartmentId={selectedDepartmentId}
+        terms={terms}
+        wdays={wdays}
+        departments={departments}
+        onClose={() => setEditOpen(false)}
+        onSaved={onSaved}
+      />
     </Box>
   );
 }

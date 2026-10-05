@@ -216,6 +216,39 @@ export default function JugyoEditDialog({
 	     label="この時限は演習枠"
 	/>
 
+	<FormControlLabel
+	  sx={{ mt: 1, display: "block" }}
+	     control={
+	       <Checkbox
+		 checked={current.exception ?? false}
+		 onChange={(e) =>
+		   setCurrent({
+		     ...current,
+		     exception: e.target.checked,
+		   })
+		 }
+	       />
+	     }
+	     label="例外"
+	/>
+
+	{current.exception && (
+	  <TextField
+	    label="例外理由"
+	    value={current.notes ?? ""}
+	    onChange={(e) =>
+	      setCurrent({
+		...current,
+		notes: e.target.value,
+	      })
+	    }
+	    multiline
+	    minRows={2}
+	    fullWidth
+	    margin="normal"
+	  />
+	)}
+	
       </DialogContent>
 
       
