@@ -12,6 +12,7 @@ type Kamoku = {
   id: number;
   name: string;
   introduced?: number | null;
+  old?: boolean | null;
   level?: number | null;
   hisshu?: boolean | null;
   sentakuhi?: boolean | null;
@@ -72,7 +73,7 @@ export default function KamokuManager({
             <TableRow key={k.id}>
               <TableCell>{k.id}</TableCell>
               <TableCell>{k.departments?.name ?? ""}</TableCell>
-              <TableCell>{k.name}</TableCell>
+              <TableCell>{k.name + (k.old? "(廃止)":"")}</TableCell>
               <TableCell>{k.introduced}</TableCell>
               <TableCell>{k.level}</TableCell>
               <TableCell>{k.hisshu ? "○" : ""}</TableCell>

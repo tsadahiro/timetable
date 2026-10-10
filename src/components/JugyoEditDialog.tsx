@@ -123,23 +123,33 @@ export default function JugyoEditDialog({
 	    </MenuItem>
 	  ))}
 	</TextField>
-	
-        <TextField
-          select
-          margin="dense"
-          label="担当教員"
-          fullWidth
-          value={current.teacher_id ?? ""}
-          onChange={(e) =>
-            setCurrent({ ...current, teacher_id: Number(e.target.value) })
-          }
-        >
-          {teachers.map((t) => (
-            <MenuItem key={t.id} value={t.id}>
-              {t.fname} {t.gname}
-            </MenuItem>
-          ))}
-        </TextField>
+
+	<TextField
+	  select
+	  margin="dense"
+	  label="担当教員"
+	  fullWidth
+	  value={current.teacher_id ?? ""}
+	  onChange={(e) => {
+	    const value = e.target.value;
+	    
+	    setCurrent({
+	      ...current,
+	      teacher_id:
+          value === "" ? null : Number(value),
+	    });
+	  }}
+	>
+	  <MenuItem value="">
+	    未定
+	  </MenuItem>
+
+	  {teachers.map((t) => (
+	    <MenuItem key={t.id} value={t.id}>
+	      {t.fname} {t.gname}
+	    </MenuItem>
+	  ))}
+	</TextField>
 
         <TextField
           select

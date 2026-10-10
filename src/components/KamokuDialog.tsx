@@ -49,24 +49,65 @@ export default function KamokuDialog({ open, onClose, kamoku, onSaved }: any) {
   }, [kamoku]);
 
   const handleSave = async () => {
+    const {
+      departments,
+      ...rest
+    } = form;
+
     const payload = {
-      ...form,
+      ...rest,
       department_id:
-        form.category === "department_specialized"
-          ? form.department_id
-          : null,
+      form.category === "department_specialized"
+      ? form.department_id
+      : null,
       updated_at: new Date().toISOString(),
     };
 
+    let error;
+
     if (kamoku) {
-      await supabase.from("kamokus").update(payload).eq("id", kamoku.id);
+      const result = await supabase
+	.from("kamokus")
+	.update(payload)
+	.eq("id", kamoku.id);
+
+      error = result.error;
     } else {
-      await supabase.from("kamokus").insert(payload);
+      const result = await supabase
+	.from("kamokus")
+	.insert(payload);
+
+      error = result.error;
     }
 
-    onSaved();
+    if (error) {
+      console.error("kamoku save error:", error);
+      alert("科目の保存に失敗しました: " + error.message);
+      return;
+    }
+
+    await onSaved();
     onClose();
   };
+  //const handleSave = async () => {
+  //  const payload = {
+  //    ...form,
+  //    department_id:
+  //      form.category === "department_specialized"
+  //        ? form.department_id
+  //        : null,
+  //    updated_at: new Date().toISOString(),
+  //  };
+  //
+  //  if (kamoku) {
+  //    await supabase.from("kamokus").update(payload).eq("id", kamoku.id);
+  //  } else {
+  //    await supabase.from("kamokus").insert(payload);
+  //  }
+  //
+  //  onSaved();
+  //  onClose();
+  //};
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -210,6 +251,18 @@ export default function KamokuDialog({ open, onClose, kamoku, onSaved }: any) {
             }
             label="DM"
           />
+
+	  <FormControlLabel
+	    control={
+	      <Checkbox
+		checked={!!form.old}
+		onChange={(e) =>
+		  setForm({ ...form, old: e.target.checked })
+		}
+	      />
+	    }
+	    label="廃止"
+	  />	  
         </FormGroup>
       </DialogContent>
 

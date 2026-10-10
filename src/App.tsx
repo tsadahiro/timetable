@@ -45,7 +45,8 @@ export default function App() {
   const [forbiddens, setForbiddens] = useState<any[]>([]);
   const [calendarPeriods, setCalendarPeriods] =
     useState<CalendarPeriod[]>([]);  
-  
+  const [previousJugyos, setPreviousJugyos] = useState<any[]>([]);
+
   const termNames = ["第1","第3","第4","通年","第2"]
   const [tab, setTab] = useState(0);
   const [jugyos, setJugyos] = useState<any[]>([]);
@@ -78,6 +79,7 @@ export default function App() {
 	`)
 	.order("level", { ascending: true })
 	.order("id", { ascending: true }),
+      
       supabase
 	.from("terms")
 	.select("id, name, year, start, end, abbr, length")
@@ -213,6 +215,44 @@ export default function App() {
     setJugyos(sortedJugyos);
   };
 
+  const fetchPreviousJugyos = async (year: number) => {
+    const { data, error } = await supabase
+      .from("jugyos")
+      .select(`
+      id,
+      year,
+      term_id,
+      department_id,
+      teacher_id,
+      kamoku_id,
+      wday_id,
+      period,
+      teachers (
+        id,
+        fname,
+        gname
+      ),
+      terms (
+        id,
+        name,
+        year
+      ),
+      wdays (
+        id,
+        name
+      )
+      `)
+      .eq("year", year - 1);
+    
+    if (error) {
+      console.error("previous jugyos fetch error:", error);
+      return;
+    }
+
+    setPreviousJugyos(data || []);
+  };  
+
+  
   const handleSaveJugyo = async (jugyo: any, deleted = false) => {
     if (deleted) {
       await fetchJugyos();
@@ -267,7 +307,8 @@ export default function App() {
 
   useEffect(() => {
     fetchJugyos(selectedYear);
-  }, [selectedYear]);
+    fetchPreviousJugyos(selectedYear);
+  }, [selectedYear]);  
 
   const availableYears = Array.from(
     new Set(terms.map((term) => Number(term.year)))
@@ -306,23 +347,6 @@ export default function App() {
     ? teachers.filter((t) => t.department_id === selectedDepartmentId)
     : teachers;
 
-  //const candidateKamokus = kamokus.filter((k) => {
-  //  // 旧学科：数学科・情報科学科
-  //  if (k.department_id === 1 || k.department_id === 2) {
-  //    return (
-  //	k.introduced >= 2017 &&
-  //	k.level > selectedYear - 2027
-  //    );
-  //  }
-  //
-  //  // 新学科：データサイエンス
-  //  if (k.department_id === 3) {
-  //    return k.level <= selectedYear - 2027;
-  //  }
-  //  
-  //  return false;
-  //});
-  
   return (
     <>
     <BrowserRouter>
@@ -430,8 +454,13 @@ export default function App() {
 		      year={selectedYear}
 		      kamokus={kamokus}
 		      jugyos={jugyos}
+		      previousJugyos={previousJugyos}
 		      teachers={teachers}
 		      departments={departments}
+		      terms={visibleTerms}
+		      wdays={wdays}
+		      selectedDepartmentId={selectedDepartmentId}
+		      onSaveJugyo={handleSaveJugyo}
 		    />
 		  )}
 		  {tab === 4 && availables}

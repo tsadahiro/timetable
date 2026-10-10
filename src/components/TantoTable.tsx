@@ -1,85 +1,196 @@
 // src/components/TantoTable.tsx
 
+// src/components/TantoTable.tsx
+
+import { useState } from "react";
+
 import {
   Box,
+  Button,
   Paper,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Typography,
 } from "@mui/material";
 
+import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+
+import JugyoEditDialog from "./JugyoEditDialog";
+
 type Props = {
   year: number;
   kamokus: any[];
   jugyos: any[];
+  previousJugyos: any[];
   teachers: any[];
   departments: any[];
+  terms: any[];
+  wdays: any[];
+  selectedDepartmentId: number | null;
+
+  onSaveJugyo: (
+    jugyo: any,
+    deleted?: boolean
+  ) => Promise<void>;
 };
 
 export default function TantoTable({
   year,
   kamokus,
   jugyos,
+  previousJugyos,
   teachers,
   departments,
+  terms,
+  wdays,
+  selectedDepartmentId,
+  onSaveJugyo,
 }: Props) {
+  const [open, setOpen] = useState(false);
+  const [selectedJugyo, setSelectedJugyo] =
+    useState<any>(null);
+  const [isNew, setIsNew] = useState(false);
 
   /*
    * 開講候補科目
    *
-   * 旧学科（数学・情報科学）:
+   * 旧学科（数学・情報科学）
    *   introduced >= 2017
    *   level > year - 2027
    *
-   * 新学科（データサイエンス）:
+   * 新学科（データサイエンス）
    *   level <= year - 2027
    */
-  const candidateKamokus = kamokus.filter((k) => {
-    if (k.department_id === 1 || k.department_id === 2) {
-      return (
-        k.introduced >= 2017 &&
-        k.level > year - 2027
+  const candidateKamokus = kamokus
+    .filter((k) => {
+      if (
+        selectedDepartmentId !== null &&
+        selectedDepartmentId !== k.department_id
+      ) {
+        return false;
+      }
+
+      if (k.old){
+	return false;
+      }
+
+      if (
+        k.department_id === 1 ||
+        k.department_id === 2
+      ) {
+        return (
+          k.introduced >= 2017 &&
+          k.level > year - 2027
+        );
+      }
+
+      if (k.department_id === 3) {
+        return k.level <= year - 2027;
+      }
+
+      return false;
+    })
+    .sort((a, b) => {
+      const depA = a.department_id ?? 999;
+      const depB = b.department_id ?? 999;
+
+      if (depA !== depB) {
+        return depA - depB;
+      }
+
+      const levelA = a.level ?? 999;
+      const levelB = b.level ?? 999;
+
+      if (levelA !== levelB) {
+        return levelA - levelB;
+      }
+
+      return (a.name ?? "").localeCompare(
+        b.name ?? "",
+        "ja"
       );
-    }
+    });
 
-    if (k.department_id === 3) {
-      return k.level <= year - 2027;
-    }
+  const departmentName = (
+    departmentId: number | null
+  ) => {
+    const d = departments.find(
+      (d) => d.id === departmentId
+    );
 
-    return false;
-  });
-
-  const departmentName = (departmentId: number | null) => {
-    const d = departments.find((d) => d.id === departmentId);
     return d?.abbr ?? d?.name ?? "未定";
   };
 
-  const teacherName = (teacherId: number | null) => {
-    if (teacherId == null) return "未定";
+  const teacherName = (
+    teacherId: number | null
+  ) => {
+    if (teacherId == null) {
+      return "未定";
+    }
 
-    const t = teachers.find((t) => t.id === teacherId);
+    const t = teachers.find(
+      (t) => t.id === teacherId
+    );
 
-    if (!t) return "未定";
+    if (!t) {
+      return "未定";
+    }
+    const ref = teachers.find(
+      (r) => r.id === t.ref_id
+    );
+    const renraku = ref? "("+ref.fname+")":"";
+    
+    return (
+      `${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim() ||
+      "未定"
+    );
+  };
 
-    return `${t.fname ?? ""} ${t.gname ?? ""}`.trim() || "未定";
+  const termName = (j: any) => {
+    if (j?.terms?.name) {
+      return j.terms.name;
+    }
+
+    const term = terms.find(
+      (t) => t.id === j?.term_id
+    );
+
+    return term?.name ?? "未定";
+  };
+
+  const wdayName = (j: any) => {
+    if (j?.wdays?.name) {
+      return j.wdays.name;
+    }
+
+    const wday = wdays.find(
+      (w) => w.id === j?.wday_id
+    );
+
+    return wday?.name ?? "未定";
+  };
+
+  const periodName = (j: any) => {
+    if (j?.period == null) {
+      return "未定";
+    }
+
+    return `${j.period}限`;
   };
 
   /*
-   * kamoku 1件から表示行を作る。
-   *
-   * jugyos 0件 → 未定を1行
-   * jugyos n件 → n行
+   * 科目に対応する授業を取得
    */
-  const rows = candidateKamokus.flatMap((k) => {
-    const js = jugyos
+  const jugyosForKamoku = (kamokuId: number) =>
+    jugyos
       .filter(
         (j) =>
           j.year === year &&
-          j.kamoku_id === k.id
+          j.kamoku_id === kamokuId
       )
       .sort((a, b) => {
         const termA = a.term_id ?? 9999;
@@ -96,73 +207,76 @@ export default function TantoTable({
           return wdayA - wdayB;
         }
 
-        return (a.period ?? 9999) - (b.period ?? 9999);
+        return (
+          (a.period ?? 9999) -
+          (b.period ?? 9999)
+        );
       });
 
-    if (js.length === 0) {
-      return [
-        {
-          key: `kamoku-${k.id}`,
-          kamoku: k,
-          jugyo: null,
-          classNo: 1,
-        },
-      ];
-    }
+  const previousJugyosForKamoku = (kamokuId: number) =>
+    previousJugyos
+      .filter((j) => j.kamoku_id === kamokuId)
+      .sort((a, b) => {
+	const termA = a.term_id ?? 9999;
+	const termB = b.term_id ?? 9999;
 
-    return js.map((j, index) => ({
-      key: `jugyo-${j.id}`,
-      kamoku: k,
-      jugyo: j,
-      classNo: index + 1,
-    }));
-  });
+	if (termA !== termB) return termA - termB;
 
+	const wdayA = a.wday_id ?? 9999;
+	const wdayB = b.wday_id ?? 9999;
+
+	if (wdayA !== wdayB) return wdayA - wdayB;
+
+	return (a.period ?? 9999) - (b.period ?? 9999);
+      });
+  
   /*
-   * 学科 → 学年 → 科目名 の順
+   * 新規割当
+   *
+   * 年度、科目、学科はあらかじめ設定する。
    */
-  rows.sort((a, b) => {
-    const depA = a.kamoku.department_id ?? 999;
-    const depB = b.kamoku.department_id ?? 999;
+  const handleNew = (kamoku: any) => {
+    setSelectedJugyo({
+      year,
+      kamoku_id: kamoku.id,
+      department_id: kamoku.department_id,
 
-    if (depA !== depB) {
-      return depA - depB;
-    }
+      teacher_id: null,
+      term_id: null,
+      wday_id: null,
+      period: null,
 
-    const levelA = a.kamoku.level ?? 999;
-    const levelB = b.kamoku.level ?? 999;
+      excercise: false,
+      exception: false,
+      notes: null,
+      comment: null,
+      kaisuu: 9,
+    });
 
-    if (levelA !== levelB) {
-      return levelA - levelB;
-    }
-
-    return (a.kamoku.name ?? "").localeCompare(
-      b.kamoku.name ?? "",
-      "ja"
-    );
-  });
-
-  const termName = (j: any) => {
-    return j?.terms?.name ?? "未定";
+    setIsNew(true);
+    setOpen(true);
   };
 
-  const timeName = (j: any) => {
-    if (!j) return "未定";
+  /*
+   * 既存割当編集
+   */
+  const handleEdit = (jugyo: any) => {
+    setSelectedJugyo(jugyo);
+    setIsNew(false);
+    setOpen(true);
+  };
 
-    const wday =
-      j.wdays?.name ??
-      "未定";
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedJugyo(null);
+    setIsNew(false);
+  };
 
-    const period =
-      j.period != null
-        ? `${j.period}限`
-        : "未定";
-
-    if (!j.wday_id && !j.period) {
-      return "未定";
-    }
-
-    return `${wday} ${period}`;
+  const handleSaved = async (
+    jugyo: any,
+    deleted = false
+  ) => {
+    await onSaveJugyo(jugyo, deleted);
   };
 
   return (
@@ -171,73 +285,197 @@ export default function TantoTable({
         {year}年度 担当表
       </Typography>
 
-      <TableContainer component={Paper}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>学科</TableCell>
-              <TableCell>学年</TableCell>
-              <TableCell>科目</TableCell>
-              <TableCell align="center">クラス</TableCell>
-              <TableCell>担当者</TableCell>
-              <TableCell>ターム</TableCell>
-              <TableCell>曜日・時限</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {rows.map((row) => {
-              const k = row.kamoku;
-              const j = row.jugyo;
-
-              return (
-                <TableRow key={row.key} hover>
-                  <TableCell>
-                    {departmentName(k.department_id)}
-                  </TableCell>
-
-                  <TableCell>
-                    {k.level != null
-                      ? `${k.level}年`
-                      : "未定"}
-                  </TableCell>
-
-                  <TableCell>
-                    {k.name ?? "未定"}
-                  </TableCell>
-
-                  <TableCell align="center">
-                    {row.classNo}
-                  </TableCell>
-
-                  <TableCell>
-                    {teacherName(j?.teacher_id ?? null)}
-                  </TableCell>
-
-                  <TableCell>
-                    {termName(j)}
-                  </TableCell>
-
-                  <TableCell>
-                    {timeName(j)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-
-            {rows.length === 0 && (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  align="center"
+      {candidateKamokus.map((k) => {
+        const js = jugyosForKamoku(k.id);
+	const previousJs = previousJugyosForKamoku(k.id);
+        return (
+          <Paper
+            key={k.id}
+            variant="outlined"
+            sx={{
+              mb: 2,
+              overflow: "hidden",
+            }}
+          >
+            {/* 科目見出し */}
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+                bgcolor: "grey.50",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+              }}
+            >
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ fontWeight: 600 }}
                 >
-                  開講候補科目がありません
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                  {k.name}
+                </Typography>
+
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  {departmentName(k.department_id)}
+                  {" / "}
+                  {k.level != null
+                    ? `${k.level}年`
+                    : "学年未定"}
+                </Typography>
+
+{previousJs.length > 0 && (
+  <Typography
+    variant="caption"
+    color="text.secondary"
+    sx={{ display: "block", mt: 0.3 }}
+  >
+    前年度：
+    {previousJs.map((j, index) => (
+      <span key={j.id}>
+        {index > 0 && " / "}
+        {teacherName(j.teacher_id)}
+        {" "}
+        {termName(j)}
+        {" "}
+        {wdayName(j)}
+        {j.period != null ? `${j.period}限` : ""}
+      </span>
+    ))}
+  </Typography>
+)}		
+              </Box>
+
+
+	      
+              <Typography
+                variant="body2"
+                sx={{
+                  whiteSpace: "nowrap",
+                  fontWeight: 500,
+                }}
+              >
+                計 {js.length} クラス
+              </Typography>
+
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
+                onClick={() => handleNew(k)}
+              >
+                新規割当
+              </Button>
+            </Box>
+
+            {/* 担当一覧 */}
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>担当者</TableCell>
+                  <TableCell>学期</TableCell>
+                  <TableCell>曜日</TableCell>
+                  <TableCell>時限</TableCell>
+                  <TableCell>演習</TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ width: 100 }}
+                  />
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {js.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      sx={{
+                        color: "text.secondary",
+                        py: 1.5,
+                      }}
+                    >
+                      まだ担当が割り当てられていません
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  js.map((j) => (
+                    <TableRow
+                      key={j.id}
+                      hover
+                    >
+                      <TableCell>
+                        {teacherName(j.teacher_id)
+			}
+                      </TableCell>
+
+                      <TableCell>
+                        {termName(j)}
+                      </TableCell>
+
+                      <TableCell>
+                        {wdayName(j)}
+                      </TableCell>
+
+                      <TableCell>
+                        {periodName(j)}
+                      </TableCell>
+
+                      <TableCell>
+                        {j.excercise? "演習":""}
+                      </TableCell>
+		      
+                      <TableCell align="right">
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon />}
+                          onClick={() =>
+                            handleEdit(j)
+                          }
+                        >
+                          編集
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </Paper>
+        );
+      })}
+
+      {candidateKamokus.length === 0 && (
+        <Typography
+          color="text.secondary"
+          sx={{ p: 2 }}
+        >
+          開講候補科目がありません
+        </Typography>
+      )}
+
+      {/* 新規・編集共通 */}
+      <JugyoEditDialog
+        open={open}
+        onClose={handleClose}
+        jugyo={selectedJugyo}
+        onSaved={handleSaved}
+        isNew={isNew}
+        teachers={teachers}
+        kamokus={kamokus}
+        terms={terms}
+        wdays={wdays}
+        departments={departments}
+        selectedDepartmentId={
+          selectedJugyo?.department_id ??
+          selectedDepartmentId
+        }
+      />
     </Box>
   );
 }
+
