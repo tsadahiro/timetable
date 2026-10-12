@@ -8,6 +8,7 @@ import {
   MenuItem,
   Checkbox,
   FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -210,37 +211,52 @@ export default function JugyoEditDialog({
 	  }
 	/>	
 
-	<FormControlLabel
-	  sx={{ mt: 1, display: "block" }}
-	     control={
-	       <Checkbox
-		 checked={current.excercise ?? false}
-		 onChange={(e) =>
-		   setCurrent({
-		     ...current,
-		     excercise: e.target.checked,
-		   })
-		 }
-	       />
-	     }
-	     label="この時限は演習枠"
-	/>
+	<FormGroup row sx={{ mt: 1 }}>
+	  <FormControlLabel
+	    control={
+	      <Checkbox
+		checked={current.excercise ?? false}
+		onChange={(e) =>
+		  setCurrent({
+		    ...current,
+		    excercise: e.target.checked,
+		  })
+		}
+	      />
+	    }
+	    label="この時限は演習枠"
+	  />
 
-	<FormControlLabel
-	  sx={{ mt: 1, display: "block" }}
-	     control={
-	       <Checkbox
-		 checked={current.exception ?? false}
-		 onChange={(e) =>
-		   setCurrent({
-		     ...current,
-		     exception: e.target.checked,
-		   })
-		 }
-	       />
-	     }
-	     label="例外"
-	/>
+	  <FormControlLabel
+	    control={
+	      <Checkbox
+		checked={current.exception ?? false}
+		onChange={(e) =>
+		  setCurrent({
+		    ...current,
+		    exception: e.target.checked,
+		  })
+		}
+	      />
+	    }
+	    label="例外"
+	  />
+
+	  <FormControlLabel
+	    control={
+	      <Checkbox
+		checked={current.confirmed ?? false}
+		onChange={(e) =>
+		  setCurrent({
+		    ...current,
+		    confirmed: e.target.checked,
+		  })
+		}
+	      />
+	    }
+	    label="決定"
+	  />
+	</FormGroup>	
 
 	{current.exception && (
 	  <TextField

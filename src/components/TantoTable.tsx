@@ -1,8 +1,6 @@
 // src/components/TantoTable.tsx
 
-// src/components/TantoTable.tsx
-
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import {
   Box,
@@ -38,6 +36,18 @@ type Props = {
   ) => Promise<void>;
 };
 
+const jugyoSort = (a: any, b: any) => {
+  const termA = a.term_id ?? 9999;
+  const termB = b.term_id ?? 9999;
+  if (termA !== termB) return termA - termB;
+
+  const wdayA = a.wday_id ?? 9999;
+  const wdayB = b.wday_id ?? 9999;
+  if (wdayA !== wdayB) return wdayA - wdayB;
+
+  return (a.period ?? 9999) - (b.period ?? 9999);
+};
+
 export default function TantoTable({
   year,
   kamokus,
@@ -51,9 +61,32 @@ export default function TantoTable({
   onSaveJugyo,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const [selectedJugyo, setSelectedJugyo] =
-    useState<any>(null);
+  const [selectedJugyo, setSelectedJugyo] = useState<any>(null);
   const [isNew, setIsNew] = useState(false);
+
+  /*
+   * 一覧検索用 Map。
+   * render 中の Array.find() の繰り返しを避ける。
+   */
+  const teacherMap = useMemo(
+    () => new Map(teachers.map((t) => [t.id, t])),
+    [teachers]
+  );
+
+  const departmentMap = useMemo(
+    () => new Map(departments.map((d) => [d.id, d])),
+    [departments]
+  );
+
+  const termMap = useMemo(
+    () => new Map(terms.map((t) => [t.id, t])),
+    [terms]
+  );
+
+  const wdayMap = useMemo(
+    () => new Map(wdays.map((w) => [w.id, w])),
+    [wdays]
+  );
 
   /*
    * 開講候補科目
@@ -65,246 +98,226 @@ export default function TantoTable({
    * 新学科（データサイエンス）
    *   level <= year - 2027
    */
-  const candidateKamokus = kamokus
-    .filter((k) => {
-      if (
-        selectedDepartmentId !== null &&
-        selectedDepartmentId !== k.department_id
-      ) {
-        return false;
-      }
+  const candidateKamokus = useMemo(
+    () =>
+      kamokus
+        .filter((k) => {
+          if (
+            selectedDepartmentId !== null &&
+            selectedDepartmentId !== k.department_id
+          ) {
+            return false;
+          }
 
-      if (k.old){
-	return false;
-      }
+          if (k.old) {
+            return false;
+          }
 
-      if (
-        k.department_id === 1 ||
-        k.department_id === 2
-      ) {
-        return (
-          k.introduced >= 2017 &&
-          k.level > year - 2027
-        );
-      }
+          if (k.department_id === 1 || k.department_id === 2) {
+            return (
+              k.introduced >= 2017 &&
+              k.level > year - 2027
+            );
+          }
 
-      if (k.department_id === 3) {
-        return k.level <= year - 2027;
-      }
+          if (k.department_id === 3) {
+            return k.level <= year - 2027;
+          }
 
-      return false;
-    })
-    .sort((a, b) => {
-      const depA = a.department_id ?? 999;
-      const depB = b.department_id ?? 999;
+          return false;
+        })
+        .slice()
+        .sort((a, b) => {
+          const depA = a.department_id ?? 999;
+          const depB = b.department_id ?? 999;
+          if (depA !== depB) return depA - depB;
 
-      if (depA !== depB) {
-        return depA - depB;
-      }
+          const levelA = a.level ?? 999;
+          const levelB = b.level ?? 999;
+          if (levelA !== levelB) return levelA - levelB;
 
-      const levelA = a.level ?? 999;
-      const levelB = b.level ?? 999;
-
-      if (levelA !== levelB) {
-        return levelA - levelB;
-      }
-
-      return (a.name ?? "").localeCompare(
-        b.name ?? "",
-        "ja"
-      );
-    });
-
-  const departmentName = (
-    departmentId: number | null
-  ) => {
-    const d = departments.find(
-      (d) => d.id === departmentId
-    );
-
-    return d?.abbr ?? d?.name ?? "未定";
-  };
-
-  const teacherName = (
-    teacherId: number | null
-  ) => {
-    if (teacherId == null) {
-      return "未定";
-    }
-
-    const t = teachers.find(
-      (t) => t.id === teacherId
-    );
-
-    if (!t) {
-      return "未定";
-    }
-    const ref = teachers.find(
-      (r) => r.id === t.ref_id
-    );
-    const renraku = ref? "("+ref.fname+")":"";
-    
-    return (
-      `${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim() ||
-      "未定"
-    );
-  };
-
-
-  const teacherNameCell = (
-    teacherId: number | null
-  ) => {
-    if (teacherId == null) {
-      return <TableCell sx={{color:"red"}}>{"未定"}</TableCell>;
-    }
-
-    const t = teachers.find(
-      (t) => t.id === teacherId
-    );
-
-    if (!t) {
-      return <TableCell>{"未定"}</TableCell>;
-    }
-    const ref = teachers.find(
-      (r) => r.id === t.ref_id
-    );
-    const renraku = ref? "("+ref.fname+")":"";
-    
-    return (
-      <TableCell>
-	{`${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim()} 
-      </TableCell>
-    );
-  };
-  
-  const termName = (j: any) => {
-    if (j?.terms?.name) {
-      return j.terms.name;
-    }
-
-    const term = terms.find(
-      (t) => t.id === j?.term_id
-    );
-
-    return term?.name ?? "未定";
-  };
-
-  const wdayName = (j: any) => {
-    if (j?.wdays?.name) {
-      return j.wdays.name;
-    }
-
-    const wday = wdays.find(
-      (w) => w.id === j?.wday_id
-    );
-
-    return wday?.name ?? "未定";
-  };
-
-  const periodName = (j: any) => {
-    if (j?.period == null) {
-      return "未定";
-    }
-
-    return `${j.period}限`;
-  };
+          return (a.name ?? "").localeCompare(
+            b.name ?? "",
+            "ja"
+          );
+        }),
+    [kamokus, selectedDepartmentId, year]
+  );
 
   /*
-   * 科目に対応する授業を取得
+   * jugyos を科目ごとに一度だけグループ化。
+   * 以前は各科目ごとに jugyos 全件を filter + sort していた。
    */
-  const jugyosForKamoku = (kamokuId: number) =>
-    jugyos
-      .filter(
-        (j) =>
-          j.year === year &&
-          j.kamoku_id === kamokuId
-      )
-      .sort((a, b) => {
-        const termA = a.term_id ?? 9999;
-        const termB = b.term_id ?? 9999;
+  const jugyosByKamoku = useMemo(() => {
+    const map = new Map<number, any[]>();
 
-        if (termA !== termB) {
-          return termA - termB;
-        }
+    for (const j of jugyos) {
+      if (j.year !== year) continue;
 
-        const wdayA = a.wday_id ?? 9999;
-        const wdayB = b.wday_id ?? 9999;
+      const list = map.get(j.kamoku_id);
+      if (list) {
+        list.push(j);
+      } else {
+        map.set(j.kamoku_id, [j]);
+      }
+    }
 
-        if (wdayA !== wdayB) {
-          return wdayA - wdayB;
-        }
+    for (const list of map.values()) {
+      list.sort(jugyoSort);
+    }
 
+    return map;
+  }, [jugyos, year]);
+
+  /*
+   * 前年度も同様に一度だけグループ化。
+   */
+  const previousJugyosByKamoku = useMemo(() => {
+    const map = new Map<number, any[]>();
+
+    for (const j of previousJugyos) {
+      const list = map.get(j.kamoku_id);
+      if (list) {
+        list.push(j);
+      } else {
+        map.set(j.kamoku_id, [j]);
+      }
+    }
+
+    for (const list of map.values()) {
+      list.sort(jugyoSort);
+    }
+
+    return map;
+  }, [previousJugyos]);
+
+  const departmentName = useCallback(
+    (departmentId: number | null) => {
+      const d = departmentMap.get(departmentId);
+      return d?.abbr ?? d?.name ?? "未定";
+    },
+    [departmentMap]
+  );
+
+  const teacherName = useCallback(
+    (teacherId: number | null) => {
+      if (teacherId == null) return "未定";
+
+      const t = teacherMap.get(teacherId);
+      if (!t) return "未定";
+
+      const ref =
+        t.ref_id != null
+          ? teacherMap.get(t.ref_id)
+          : undefined;
+
+      const renraku = ref ? `(${ref.fname})` : "";
+
+      return (
+        `${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim() ||
+        "未定"
+      );
+    },
+    [teacherMap]
+  );
+
+  const teacherNameCell = useCallback(
+    (teacherId: number | null) => {
+      if (teacherId == null) {
         return (
-          (a.period ?? 9999) -
-          (b.period ?? 9999)
+          <TableCell sx={{ color: "red" }}>
+            未定
+          </TableCell>
         );
-      });
+      }
 
-  const previousJugyosForKamoku = (kamokuId: number) =>
-    previousJugyos
-      .filter((j) => j.kamoku_id === kamokuId)
-      .sort((a, b) => {
-	const termA = a.term_id ?? 9999;
-	const termB = b.term_id ?? 9999;
+      const t = teacherMap.get(teacherId);
+      if (!t) {
+        return <TableCell>未定</TableCell>;
+      }
 
-	if (termA !== termB) return termA - termB;
+      const ref =
+        t.ref_id != null
+          ? teacherMap.get(t.ref_id)
+          : undefined;
 
-	const wdayA = a.wday_id ?? 9999;
-	const wdayB = b.wday_id ?? 9999;
+      const renraku = ref ? `(${ref.fname})` : "";
 
-	if (wdayA !== wdayB) return wdayA - wdayB;
+      return (
+        <TableCell>
+          {`${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim()}
+        </TableCell>
+      );
+    },
+    [teacherMap]
+  );
 
-	return (a.period ?? 9999) - (b.period ?? 9999);
-      });
-  
+  const termName = useCallback(
+    (j: any) => {
+      if (j?.terms?.name) return j.terms.name;
+      return termMap.get(j?.term_id)?.name ?? "未定";
+    },
+    [termMap]
+  );
+
+  const wdayName = useCallback(
+    (j: any) => {
+      if (j?.wdays?.name) return j.wdays.name;
+      return wdayMap.get(j?.wday_id)?.name ?? "未定";
+    },
+    [wdayMap]
+  );
+
+  const periodName = useCallback((j: any) => {
+    if (j?.period == null) return "未定";
+    return `${j.period}限`;
+  }, []);
+
   /*
    * 新規割当
-   *
-   * 年度、科目、学科はあらかじめ設定する。
    */
-  const handleNew = (kamoku: any) => {
-    setSelectedJugyo({
-      year,
-      kamoku_id: kamoku.id,
-      department_id: kamoku.department_id,
+  const handleNew = useCallback(
+    (kamoku: any) => {
+      setSelectedJugyo({
+        year,
+        kamoku_id: kamoku.id,
+        department_id: kamoku.department_id,
+        teacher_id: null,
+        term_id: null,
+        wday_id: null,
+        period: null,
+        excercise: false,
+        exception: false,
+        confirmed: false,
+        notes: null,
+        comment: null,
+        kaisuu: 9,
+      });
 
-      teacher_id: null,
-      term_id: null,
-      wday_id: null,
-      period: null,
+      setIsNew(true);
+      setOpen(true);
+    },
+    [year]
+  );
 
-      excercise: false,
-      exception: false,
-      notes: null,
-      comment: null,
-      kaisuu: 9,
-    });
-
-    setIsNew(true);
-    setOpen(true);
-  };
-
-  /*
-   * 既存割当編集
-   */
-  const handleEdit = (jugyo: any) => {
+  const handleEdit = useCallback((jugyo: any) => {
     setSelectedJugyo(jugyo);
     setIsNew(false);
     setOpen(true);
-  };
+  }, []);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setOpen(false);
     setSelectedJugyo(null);
     setIsNew(false);
-  };
+  }, []);
 
-  const handleSaved = async (
-    jugyo: any,
-    deleted = false
-  ) => {
-    await onSaveJugyo(jugyo, deleted);
-  };
+  const handleSaved = useCallback(
+    async (jugyo: any, deleted = false) => {
+      await onSaveJugyo(jugyo, deleted);
+    },
+    [onSaveJugyo]
+  );
 
   return (
     <Box sx={{ p: 2 }}>
@@ -313,8 +326,10 @@ export default function TantoTable({
       </Typography>
 
       {candidateKamokus.map((k) => {
-        const js = jugyosForKamoku(k.id);
-	const previousJs = previousJugyosForKamoku(k.id);
+        const js = jugyosByKamoku.get(k.id) ?? [];
+        const previousJs =
+          previousJugyosByKamoku.get(k.id) ?? [];
+
         return (
           <Paper
             key={k.id}
@@ -340,7 +355,12 @@ export default function TantoTable({
               <Box sx={{ flexGrow: 1 }}>
                 <Typography
                   variant="subtitle1"
-                  sx={{ fontWeight: 600 }}
+                  sx={{
+                    fontWeight: 600,
+                    color: k.hisshu
+                      ? "#a03030"
+                      : "#3030a0",
+                  }}
                 >
                   {k.name}
                 </Typography>
@@ -349,41 +369,43 @@ export default function TantoTable({
                   variant="body2"
                   color="text.secondary"
                 >
-                  {(k.category === "department_specialized")? departmentName(k.department_id):""}
+                  {k.category === "department_specialized"
+                    ? departmentName(k.department_id)
+                    : ""}
                   {" / "}
                   {k.level != null
                     ? `${k.level}年`
                     : "学年未定"}
                 </Typography>
 
-		{previousJs.length > 0 && (
-		  <Typography
-		    variant="caption"
-		    color="text.secondary"
-		    sx={{ display: "block", mt: 0.3 }}
-		  >
-		    前年度：
-		    {previousJs.map((j, index) => (
-		      <span key={j.id}>
-			{index > 0 && " / "}
-			{teacherName(j.teacher_id)}
-			{" "}
-			{termName(j)}
-			{" "}
-			{wdayName(j)}
-			{j.period != null ? `${j.period}限` : ""}
-		      </span>
-		    ))}
-		  </Typography>
-		)}		
+                {previousJs.length > 0 && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 0.3 }}
+                  >
+                    前年度：
+                    {previousJs.map((j, index) => (
+                      <span key={j.id}>
+                        {index > 0 && " / "}
+                        {teacherName(j.teacher_id)}{" "}
+                        {termName(j)}{" "}
+                        {wdayName(j)}
+                        {j.period != null
+                          ? `${j.period}限`
+                          : ""}
+                      </span>
+                    ))}
+                  </Typography>
+                )}
               </Box>
-	      
+
               <Typography
                 variant="body2"
                 sx={{
                   whiteSpace: "nowrap",
                   fontWeight: 500,
-		  color: ((js.length==0)?"red":"")
+                  color: js.length === 0 ? "red" : undefined,
                 }}
               >
                 計 {js.length} クラス
@@ -408,6 +430,7 @@ export default function TantoTable({
                   <TableCell>曜日</TableCell>
                   <TableCell>時限</TableCell>
                   <TableCell>演習</TableCell>
+                  <TableCell>決定</TableCell>
                   <TableCell
                     align="right"
                     sx={{ width: 100 }}
@@ -419,7 +442,7 @@ export default function TantoTable({
                 {js.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={7}
                       sx={{
                         color: "text.secondary",
                         py: 1.5,
@@ -430,11 +453,8 @@ export default function TantoTable({
                   </TableRow>
                 ) : (
                   js.map((j) => (
-                    <TableRow
-                      key={j.id}
-                      hover
-                    >
-                        {teacherNameCell(j.teacher_id)}
+                    <TableRow key={j.id} hover>
+                      {teacherNameCell(j.teacher_id)}
 
                       <TableCell>
                         {termName(j)}
@@ -449,16 +469,24 @@ export default function TantoTable({
                       </TableCell>
 
                       <TableCell>
-                        {j.excercise? "演習":""}
+                        {j.excercise ? "演習" : ""}
                       </TableCell>
-		      
+
+                      <TableCell
+                        sx={{
+                          color: j.confirmed
+                            ? "blue"
+                            : "red",
+                        }}
+                      >
+                        {j.confirmed ? "決定" : "未定"}
+                      </TableCell>
+
                       <TableCell align="right">
                         <Button
                           size="small"
                           startIcon={<EditIcon />}
-                          onClick={() =>
-                            handleEdit(j)
-                          }
+                          onClick={() => handleEdit(j)}
                         >
                           編集
                         </Button>
@@ -481,7 +509,6 @@ export default function TantoTable({
         </Typography>
       )}
 
-      {/* 新規・編集共通 */}
       <JugyoEditDialog
         open={open}
         onClose={handleClose}
@@ -489,7 +516,12 @@ export default function TantoTable({
         onSaved={handleSaved}
         isNew={isNew}
         teachers={teachers}
-        kamokus={kamokus}
+        /*
+         * 担当表から開くダイアログでは、廃止済み科目などを
+         * 選択肢に大量表示する必要がないため候補科目だけ渡す。
+         * これも Dialog 初期表示の軽量化に効く。
+         */
+        kamokus={candidateKamokus}
         terms={terms}
         wdays={wdays}
         departments={departments}
@@ -501,4 +533,3 @@ export default function TantoTable({
     </Box>
   );
 }
-

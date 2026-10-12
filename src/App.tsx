@@ -159,6 +159,7 @@ export default function App() {
       notes,
       comment,
       kaisuu,
+      confirmed,
       teachers (
         id,
         fname,
@@ -274,6 +275,7 @@ export default function App() {
       notes: jugyo.notes ?? null,
       comment: jugyo.comment ?? null,
       kaisuu: jugyo.kaisuu ?? null,
+      confirmed: jugyo.confirmed ?? false,
     };
 
     if (jugyo.id) {
