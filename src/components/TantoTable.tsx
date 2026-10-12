@@ -127,20 +127,51 @@ export default function TantoTable({
           return false;
         })
         .slice()
-        .sort((a, b) => {
-          const depA = a.department_id ?? 999;
-          const depB = b.department_id ?? 999;
-          if (depA !== depB) return depA - depB;
+	.sort((a, b) => {
+	  // 学科
+	  const depA = a.department_id ?? 999;
+	  const depB = b.department_id ?? 999;
 
-          const levelA = a.level ?? 999;
-          const levelB = b.level ?? 999;
-          if (levelA !== levelB) return levelA - levelB;
+	  if (depA !== depB) {
+	    return depA - depB;
+	  }
 
-          return (a.name ?? "").localeCompare(
-            b.name ?? "",
-            "ja"
-          );
-        }),
+	  // 学年
+	  const levelA = a.level ?? 999;
+	  const levelB = b.level ?? 999;
+
+	  if (levelA !== levelB) {
+	    return levelA - levelB;
+	  }
+
+	  // 同じ学科・学年なら必修を先に
+	  const hisshuA = a.hisshu ? 0 : 1;
+	  const hisshuB = b.hisshu ? 0 : 1;
+
+	  if (hisshuA !== hisshuB) {
+	    return hisshuA - hisshuB;
+	  }
+
+	  // 最後に科目名
+	  return (a.name ?? "").localeCompare(
+	    b.name ?? "",
+	    "ja"
+	  );
+	}),
+    //.sort((a, b) => {
+    //      const depA = a.department_id ?? 999;
+    //      const depB = b.department_id ?? 999;
+    //      if (depA !== depB) return depA - depB;
+    //
+    //      const levelA = a.level ?? 999;
+    //      const levelB = b.level ?? 999;
+    //      if (levelA !== levelB) return levelA - levelB;
+    //
+    //      return (a.name ?? "").localeCompare(
+    //        b.name ?? "",
+    //        "ja"
+    //      );
+      //  }),
     [kamokus, selectedDepartmentId, year]
   );
 
@@ -430,7 +461,7 @@ export default function TantoTable({
                   <TableCell>曜日</TableCell>
                   <TableCell>時限</TableCell>
                   <TableCell>演習</TableCell>
-                  <TableCell>決定</TableCell>
+                  <TableCell>状態</TableCell>
                   <TableCell
                     align="right"
                     sx={{ width: 100 }}
