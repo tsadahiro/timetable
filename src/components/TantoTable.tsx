@@ -150,6 +150,33 @@ export default function TantoTable({
     );
   };
 
+
+  const teacherNameCell = (
+    teacherId: number | null
+  ) => {
+    if (teacherId == null) {
+      return <TableCell sx={{color:"red"}}>{"未定"}</TableCell>;
+    }
+
+    const t = teachers.find(
+      (t) => t.id === teacherId
+    );
+
+    if (!t) {
+      return <TableCell>{"未定"}</TableCell>;
+    }
+    const ref = teachers.find(
+      (r) => r.id === t.ref_id
+    );
+    const renraku = ref? "("+ref.fname+")":"";
+    
+    return (
+      <TableCell>
+	{`${t.fname ?? ""} ${t.gname ?? ""} ${renraku}`.trim()} 
+      </TableCell>
+    );
+  };
+  
   const termName = (j: any) => {
     if (j?.terms?.name) {
       return j.terms.name;
@@ -322,42 +349,41 @@ export default function TantoTable({
                   variant="body2"
                   color="text.secondary"
                 >
-                  {departmentName(k.department_id)}
+                  {(k.category === "department_specialized")? departmentName(k.department_id):""}
                   {" / "}
                   {k.level != null
                     ? `${k.level}年`
                     : "学年未定"}
                 </Typography>
 
-{previousJs.length > 0 && (
-  <Typography
-    variant="caption"
-    color="text.secondary"
-    sx={{ display: "block", mt: 0.3 }}
-  >
-    前年度：
-    {previousJs.map((j, index) => (
-      <span key={j.id}>
-        {index > 0 && " / "}
-        {teacherName(j.teacher_id)}
-        {" "}
-        {termName(j)}
-        {" "}
-        {wdayName(j)}
-        {j.period != null ? `${j.period}限` : ""}
-      </span>
-    ))}
-  </Typography>
-)}		
+		{previousJs.length > 0 && (
+		  <Typography
+		    variant="caption"
+		    color="text.secondary"
+		    sx={{ display: "block", mt: 0.3 }}
+		  >
+		    前年度：
+		    {previousJs.map((j, index) => (
+		      <span key={j.id}>
+			{index > 0 && " / "}
+			{teacherName(j.teacher_id)}
+			{" "}
+			{termName(j)}
+			{" "}
+			{wdayName(j)}
+			{j.period != null ? `${j.period}限` : ""}
+		      </span>
+		    ))}
+		  </Typography>
+		)}		
               </Box>
-
-
 	      
               <Typography
                 variant="body2"
                 sx={{
                   whiteSpace: "nowrap",
                   fontWeight: 500,
+		  color: ((js.length==0)?"red":"")
                 }}
               >
                 計 {js.length} クラス
@@ -408,10 +434,7 @@ export default function TantoTable({
                       key={j.id}
                       hover
                     >
-                      <TableCell>
-                        {teacherName(j.teacher_id)
-			}
-                      </TableCell>
+                        {teacherNameCell(j.teacher_id)}
 
                       <TableCell>
                         {termName(j)}
