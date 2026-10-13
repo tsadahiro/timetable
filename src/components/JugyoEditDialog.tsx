@@ -9,6 +9,7 @@ import {
   Checkbox,
   FormControlLabel,
   FormGroup,
+  Autocomplete,
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
@@ -125,6 +126,53 @@ export default function JugyoEditDialog({
 	  ))}
 	</TextField>
 
+	<Autocomplete
+	  options={teachers}
+	  value={
+	  teachers.find(
+	    (t) => t.id === current.teacher_id
+	  ) ?? null
+	  }
+	  onChange={(_, newValue) =>
+	    setCurrent({
+	      ...current,
+	      teacher_id: newValue?.id ?? null,
+	    })
+	  }
+	  getOptionLabel={(t) =>
+	    `${t.fname ?? ""} ${t.gname ?? ""}`.trim()
+	  }
+	  
+	  filterOptions={(options, state) => {
+	    const q = state.inputValue.toLowerCase();
+
+	    return options.filter((t) => {
+	      const text = [
+		t.fname,
+		t.gname,
+		t.fyomi,
+		t.gyomi,
+	      ]
+		.filter(Boolean)
+		.join(" ")
+		.toLowerCase();
+
+	      return text.includes(q);
+	    });
+	  }}
+	  
+	  isOptionEqualToValue={(option, value) =>
+	    option.id === value.id
+	  }
+	  renderInput={(params) => (
+	    <TextField
+	      {...params}
+	      label="担当教員"
+	      fullWidth
+	    />
+	  )}
+	/>
+	{/*
 	<TextField
 	  select
 	  margin="dense"
@@ -151,7 +199,7 @@ export default function JugyoEditDialog({
 	    </MenuItem>
 	  ))}
 	</TextField>
-
+	*/}
         <TextField
           select
           margin="dense"
@@ -205,7 +253,7 @@ export default function JugyoEditDialog({
 	  label="回数"
 	  type="number"
 	  fullWidth
-	  value={current.kaisuu ?? "9"}
+	  value={current.kaisuu ?? "8"}
 	  onChange={(e) =>
 	    setCurrent({ ...current, kaisuu: Number(e.target.value) })
 	  }
