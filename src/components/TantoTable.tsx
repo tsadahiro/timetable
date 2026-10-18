@@ -63,7 +63,6 @@ export default function TantoTable({
   const [open, setOpen] = useState(false);
   const [selectedJugyo, setSelectedJugyo] = useState<any>(null);
   const [isNew, setIsNew] = useState(false);
-
   /*
    * 一覧検索用 Map。
    * render 中の Array.find() の繰り返しを避ける。
@@ -322,7 +321,7 @@ export default function TantoTable({
         confirmed: false,
         notes: null,
         comment: null,
-        kaisuu: 9,
+        kaisuu: 8,
       });
 
       setIsNew(true);

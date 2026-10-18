@@ -8,7 +8,7 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import Timetable from "./components/Timetable"
+import Timetable from "./components/Timetable_dragdrop"
 import JugyoManager from "./components/JugyoManager"
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
@@ -19,6 +19,7 @@ import TermsView from "./components/TermsView"
 import AcademicCalendarManager  from "./components/AcademicCalendarManager";
 import ForbiddenManager  from "./components/ForbiddenManager";
 import TantoTable from "./components/TantoTable";
+import TehaiTable from "./components/TehaiTable";
 
 type CalendarPeriod = {
   id: number;
@@ -410,6 +411,7 @@ export default function App() {
 		  <Tab label="時間割" />
 		  <Tab label="科目" />
 		  <Tab label="担当表" />
+		  <Tab label="手配表"/>
 		  <Tab label="禁則表" />
 		  <Tab label="教員" />
 		  <Tab label="ターム" />
@@ -465,51 +467,63 @@ export default function App() {
 		      onSaveJugyo={handleSaveJugyo}
 		    />
 		  )}
-		  {tab === 4 && availables}
-		  {tab === 5 && <TeacherManager
-				  year={selectedYear}
-				  selectedDepartmentId={selectedDepartmentId}
-				  teachers={visibleTeachers}
-				  jugyos={visibleJugyos}
-				  departments={departments}
-				  fetchMaster={fetchMaster}
-				/>}
-		  {tab === 6 &&
-		   <TermsView
-		      year={selectedYear}
-		      terms={terms.filter(
-			(term) => term.year === selectedYear
-		      )}
-		     calendarPeriods={calendarPeriods}
-		      onSaved={fetchMaster}
-		   />
-		  }
-		  {tab === 7 && (
-		    <AcademicCalendarManager
-		      year={selectedYear}
-		      periods={calendarPeriods.filter(
-			(period) => period.year === selectedYear,
-		      )}
-		      terms={terms.filter(
-			(term) => term.year === selectedYear
-		      )}
-		      onSaved={fetchMaster}
-		    />
-		  )}
-		  {tab === 8 && (
-		    <ForbiddenManager
-		      year={selectedYear}
-		      selectedDepartmentId={selectedDepartmentId}
-		      forbiddens={forbiddens}
-		      wdays={wdays}
-		      terms={visibleTerms}
-		      departments={departments}
-		      onSaved={fetchMaster}
-		    />
-		  )}
-		</Box>
-	      </Box>
-	      {}
+	    {tab === 4 && (
+	      <TehaiTable
+		year={selectedYear}
+		teachers={teachers.filter(
+		  (t) => t.department_id ===  selectedDepartmentId
+		)}
+		jugyos={jugyos}
+		kamokus={kamokus}
+		terms={terms}
+		wdays={wdays}
+	      />
+	    )}
+	    {tab === 5 && availables}
+	    {tab === 6 && <TeacherManager
+			    year={selectedYear}
+			    selectedDepartmentId={selectedDepartmentId}
+			    teachers={visibleTeachers}
+			    jugyos={visibleJugyos}
+			    departments={departments}
+			    fetchMaster={fetchMaster}
+			  />}
+	    {tab === 7 &&
+	     <TermsView
+	       year={selectedYear}
+	       terms={terms.filter(
+		 (term) => term.year === selectedYear
+	       )}
+	       calendarPeriods={calendarPeriods}
+	       onSaved={fetchMaster}
+	     />
+	    }
+	    {tab === 8 && (
+	      <AcademicCalendarManager
+		year={selectedYear}
+		periods={calendarPeriods.filter(
+		  (period) => period.year === selectedYear,
+		)}
+		terms={terms.filter(
+		  (term) => term.year === selectedYear
+		)}
+		onSaved={fetchMaster}
+	      />
+	    )}
+	    {tab === 9 && (
+	      <ForbiddenManager
+		year={selectedYear}
+		selectedDepartmentId={selectedDepartmentId}
+		forbiddens={forbiddens}
+		wdays={wdays}
+		terms={visibleTerms}
+		departments={departments}
+		onSaved={fetchMaster}
+	      />
+	    )}
+	    </Box>
+	    </Box>
+	    {}
             </ProtectedRoute>
 	  }
 	/>

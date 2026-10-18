@@ -42,7 +42,7 @@ type Jugyo = {
   teacher_id: number | null;
   kaisuu: number;
   wdays: { name: string };
-  kamokus: { name: string };
+  kamokus: { name: string, level:number, department_id:number };
   terms: { name: string };
 };
 
@@ -128,7 +128,7 @@ export default function TeacherManager({
     setSelectedTeacher(teacher);
     const { data, error } = await supabase
       .from("jugyos")
-      .select("id, year, term_id, terms(name), period, wday_id, kaisuu, wdays(name), kamokus(name, level)")
+      .select("id, year, term_id, terms(name), period, wday_id, kaisuu, wdays(name), kamokus(name, level, department_id)")
       .eq("teacher_id", teacher.id)
       .eq("year", year)
       .order("term_id", { ascending: true })
@@ -157,6 +157,8 @@ export default function TeacherManager({
     setOpenDialog(true);
   };
 
+  const department_name = ["","情","数","デ"];
+  
   return (
     <Box sx={{ p: 3 }}>
       <Box
@@ -283,6 +285,7 @@ export default function TeacherManager({
 	      <Table size="small">
 		<TableHead>
 		  <TableRow>
+		    <TableCell>学科</TableCell>
 		    <TableCell>科目</TableCell>
 		    <TableCell>ターム</TableCell>
 		    <TableCell>曜日</TableCell>
@@ -293,6 +296,7 @@ export default function TeacherManager({
 		<TableBody>
 		  {teacherJugyos.map((j) => (
 		    <TableRow key={j.id}>
+		      <TableCell>{department_name[j.kamokus?.department_id]}{j.id}</TableCell>
 		      <TableCell>{j.kamokus?.name}</TableCell>
 		      <TableCell>{j.terms?.name}</TableCell>
 		      <TableCell>{j.wdays?.name}</TableCell>

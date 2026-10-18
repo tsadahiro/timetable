@@ -229,6 +229,9 @@ export default function JugyoEditDialog({
             setCurrent({ ...current, wday_id: Number(e.target.value) })
           }
         >
+	  <MenuItem value="">
+	    未定
+	  </MenuItem>
           {wdays.map((w) => (
             <MenuItem key={w.id} value={w.id}>
               {w.name}
