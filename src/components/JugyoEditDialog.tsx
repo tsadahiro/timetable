@@ -219,36 +219,72 @@ export default function JugyoEditDialog({
             ))}
         </TextField>
 
-        <TextField
-          select
-          margin="dense"
-          label="曜日"
-          fullWidth
-          value={current.wday_id ?? ""}
-          onChange={(e) =>
-            setCurrent({ ...current, wday_id: Number(e.target.value) })
-          }
-        >
+	<TextField
+	  select
+	  margin="dense"
+	  label="曜日"
+	  fullWidth
+	  value={current.wday_id ?? ""}
+	  onChange={(e) =>
+	    setCurrent({
+	      ...current,
+	      wday_id:
+          e.target.value === ""
+          ? null
+          : Number(e.target.value),
+	    })
+	  }
+	>
 	  <MenuItem value="">
 	    未定
 	  </MenuItem>
-          {wdays.map((w) => (
-            <MenuItem key={w.id} value={w.id}>
-              {w.name}
-            </MenuItem>
-          ))}
-        </TextField>
+
+	  {wdays.map((w) => (
+	    <MenuItem key={w.id} value={w.id}>
+	      {w.name}
+	    </MenuItem>
+	  ))}
+	</TextField>	
 
         <TextField
+	  select
           margin="dense"
           label="時限"
           type="number"
           fullWidth
           value={current.period ?? ""}
           onChange={(e) =>
-            setCurrent({ ...current, period: Number(e.target.value) })
+	    setCurrent({
+	      ...current,
+	      period: e.target.value === ""
+		    ? null
+		    : Number(e.target.value),
+	    })
           }
-        />
+    >
+	  <MenuItem value="">
+	    未定
+	  </MenuItem>
+	  <MenuItem value={1}>
+	    1
+	  </MenuItem>
+	  <MenuItem value={2}>
+	    2
+	  </MenuItem>
+	  <MenuItem value={3}>
+	    3
+	  </MenuItem>
+	  <MenuItem value={4}>
+	    4
+	  </MenuItem>
+	  <MenuItem value={5}>
+	    5
+	  </MenuItem>
+	  <MenuItem value={6}>
+	    6
+	  </MenuItem>
+	  
+	</TextField>
 
 	
 	<TextField
