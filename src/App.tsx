@@ -421,6 +421,32 @@ export default function App() {
   useEffect(() => {
     fetchPreviousJugyos(selectedYear);
   }, [selectedYear]);
+
+  useEffect(() => {
+  if (selectedPlanId == null) return;
+
+    const channel = supabase
+      .channel(`jugyos-${selectedYear}-${selectedPlanId}`)
+      .on(
+	"postgres_changes",
+	{
+          event: "*",
+          schema: "public",
+          table: "jugyos",
+	},
+	(payload) => {
+          console.log("jugyos changed:", payload);
+
+          fetchJugyos(selectedYear, selectedPlanId);
+	}
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedYear, selectedPlanId]);
+
   
   const availableYears = Array.from(
     new Set(terms.map((term) => Number(term.year)))
