@@ -1,7 +1,7 @@
 import { useEffect, useState} from "react";
 import { supabase } from "./lib/supabaseClient";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import {Tabs, Tab, Box} from "@mui/material";
+import {Tabs, Tab, Box, TextField} from "@mui/material";
 import {
   FormControl,
   InputLabel,
@@ -47,11 +47,59 @@ export default function App() {
   const [calendarPeriods, setCalendarPeriods] =
     useState<CalendarPeriod[]>([]);  
   const [previousJugyos, setPreviousJugyos] = useState<any[]>([]);
+  const [timetablePlans, setTimetablePlans] =
+    useState<any[]>([]);
+  const [selectedPlanId, setSelectedPlanId] =
+    useState<number | null>(null);
 
+  
   const termNames = ["第1","第3","第4","通年","第2"]
   const [tab, setTab] = useState(0);
   const [jugyos, setJugyos] = useState<any[]>([]);
 
+  const fetchTimetablePlans = async (year: number) => {
+    const { data, error } = await supabase
+      .from("timetable_plans")
+      .select("*")
+      .eq("year", year)
+      .order("id");
+
+    if (error) {
+      console.error("timetable_plans fetch error:", error);
+      return;
+    }
+
+    const plans = data ?? [];
+
+    setTimetablePlans(plans);
+
+    if (plans.length === 0) {
+      setSelectedPlanId(null);
+      return;
+    }
+
+    // まず現在選択中の plan を維持できるなら維持
+    const currentExists = plans.some(
+      (p) => p.id === selectedPlanId
+    );
+
+    if (currentExists) return;
+
+    // 年度に応じた既定 plan
+    const preferred =
+      year <= 2026
+      ? plans.find((p) => p.status === "official")
+      : plans.find((p) => p.name === "Plan A");
+
+    setSelectedPlanId(
+      preferred?.id ?? plans[0].id
+    );
+  };
+
+  useEffect(() => {
+    fetchTimetablePlans(selectedYear);
+  }, [selectedYear]);
+  
   const fetchMaster = async () => {
     const [
       { data: t, error: tError },
@@ -143,12 +191,21 @@ export default function App() {
     setCalendarPeriods(cp || []);
   };
   
-  const fetchJugyos = async (year = selectedYear) => {
+  const fetchJugyos = async (
+    year = selectedYear,
+    planId = selectedPlanId
+  ) => {
+    if (planId == null) {
+      setJugyos([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("jugyos")
       .select(`
       id,
       year,
+      plan_id,
       term_id,
       department_id,
       teacher_id,
@@ -183,9 +240,11 @@ export default function App() {
         id,
         name
       )
-      `)
+    `)
       .eq("year", year)
+      .eq("plan_id", planId)
       .order("term_id");
+  
     if (error) {
       console.error("jugyos fetch error:", error);
       return;
@@ -218,11 +277,47 @@ export default function App() {
   };
 
   const fetchPreviousJugyos = async (year: number) => {
+    const previousYear = year - 1;
+
+    // まず前年の plan を取得
+    const { data: plans, error: planError } = await supabase
+      .from("timetable_plans")
+      .select("id, name, status")
+      .eq("year", previousYear)
+      .order("id");
+
+    if (planError) {
+      console.error(
+	"previous timetable plans fetch error:",
+	planError
+      );
+      setPreviousJugyos([]);
+      return;
+    }
+
+    const previousPlans = plans ?? [];
+
+    if (previousPlans.length === 0) {
+      setPreviousJugyos([]);
+      return;
+    }
+
+    // official → Plan A → 最初の plan
+    const previousPlan =
+      previousPlans.find(
+	(p) => p.status === "official"
+      ) ??
+      previousPlans.find(
+	(p) => p.name === "Plan A"
+      ) ??
+      previousPlans[0];
+
     const { data, error } = await supabase
       .from("jugyos")
       .select(`
       id,
       year,
+      plan_id,
       term_id,
       department_id,
       teacher_id,
@@ -244,16 +339,20 @@ export default function App() {
         name
       )
       `)
-      .eq("year", year - 1);
-    
+      .eq("year", previousYear)
+      .eq("plan_id", previousPlan.id);
+
     if (error) {
-      console.error("previous jugyos fetch error:", error);
+      console.error(
+	"previous jugyos fetch error:",
+	error
+      );
+      setPreviousJugyos([]);
       return;
     }
 
-    setPreviousJugyos(data || []);
-  };  
-
+    setPreviousJugyos(data ?? []);
+  };
   
   const handleSaveJugyo = async (jugyo: any, deleted = false) => {
     if (deleted) {
@@ -265,12 +364,16 @@ export default function App() {
 
     const cleanData = {
       year: jugyo.year ?? selectedYear,
+      plan_id: jugyo.plan_id ?? selectedPlanId,
+
       term_id: jugyo.term_id,
-      department_id: jugyo.department_id ?? selectedDepartmentId ?? null,
+      department_id:  jugyo.department_id ?? selectedDepartmentId ?? null,
+
       teacher_id: jugyo.teacher_id,
       kamoku_id: jugyo.kamoku_id,
       wday_id: jugyo.wday_id,
       period: jugyo.period,
+
       excercise: jugyo.excercise ?? false,
       exception: jugyo.exception ?? false,
       notes: jugyo.notes ?? null,
@@ -278,6 +381,7 @@ export default function App() {
       kaisuu: jugyo.kaisuu ?? null,
       confirmed: jugyo.confirmed ?? false,
     };
+    
 
     if (jugyo.id) {
       const { error } = await supabase
@@ -309,10 +413,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    fetchJugyos(selectedYear);
+    if (selectedPlanId != null) {
+      fetchJugyos(selectedYear, selectedPlanId);
+    }
+  }, [selectedYear, selectedPlanId]);
+  
+  useEffect(() => {
     fetchPreviousJugyos(selectedYear);
-  }, [selectedYear]);  
-
+  }, [selectedYear]);
+  
   const availableYears = Array.from(
     new Set(terms.map((term) => Number(term.year)))
   ).sort((a, b) => b - a);
@@ -399,6 +508,24 @@ export default function App() {
                     ))}
                   </Select>
                 </FormControl>
+
+		<TextField
+		  select
+		  size="small"
+		  label="時間割案"
+		  value={selectedPlanId ?? ""}
+		  onChange={(e) =>
+		    setSelectedPlanId(Number(e.target.value))
+		  }
+		  sx={{ minWidth: 160 }}
+		>
+		  {timetablePlans.map((p) => (
+		    <MenuItem key={p.id} value={p.id}>
+		      {p.name}
+		      {p.status === "official" ? "（確定版）" : ""}
+		    </MenuItem>
+		  ))}
+		</TextField>
               </Box>		
 		<Tabs
 		  value={tab}
@@ -438,7 +565,7 @@ export default function App() {
 		     <Timetable
 		     key={"timetable" + selectedYear + "-" + term}
 		       jugyos={visibleJugyos}
-		       fetchJugyos={() => fetchJugyos(selectedYear)}
+		       fetchJugyos={() =>  fetchJugyos(selectedYear, selectedPlanId)}
 		       year={selectedYear}
 		       termName={term}
 		       teachers={teachers}

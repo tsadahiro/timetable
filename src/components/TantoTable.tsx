@@ -174,6 +174,8 @@ export default function TantoTable({
     [kamokus, selectedDepartmentId, year]
   );
 
+
+  
   /*
    * jugyos を科目ごとに一度だけグループ化。
    * 以前は各科目ごとに jugyos 全件を filter + sort していた。
@@ -251,6 +253,22 @@ export default function TantoTable({
     [teacherMap]
   );
 
+  const teacherNameOnly = useCallback(
+    (teacherId: number | null) => {
+      if (teacherId == null) return "未定";
+
+      const t = teacherMap.get(teacherId);
+      if (!t) return "未定";
+
+      return (
+        `${t.fname ?? ""} ${t.gname ?? ""}`.trim() ||
+        "未定"
+      );
+    },
+    [teacherMap]
+  );
+
+  
   const teacherNameCell = useCallback(
     (teacherId: number | null) => {
       if (teacherId == null) {
@@ -349,12 +367,123 @@ export default function TantoTable({
     [onSaveJugyo]
   );
 
+  const escapeCsv = (value: any) => {
+    const s = value == null ? "" : String(value);
+
+    if (
+      s.includes(",") ||
+      s.includes('"') ||
+      s.includes("\n")
+    ) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+
+    return s;
+  };
+
+  const handleDownloadCsv = () => {
+    const rows: any[][] = [
+      [
+	"学科",
+	"学年",
+	"科目",
+	"必修",
+	"担当者",
+	"ターム",
+	"曜日",
+	"時限",
+	"演習",
+	"状態",
+      ],
+    ];
+
+    for (const k of candidateKamokus.filter((a)=>!a.hisshu)) {
+      const js = jugyosByKamoku.get(k.id) ?? [];
+
+      /*
+       * 担当未割当の科目もCSVに残す
+       */
+      if (js.length === 0) {
+	rows.push([
+          departmentName(k.department_id),
+          k.level ?? "",
+          k.name ?? "",
+          k.hisshu ? "必修" : "",
+          "未定",
+          "",
+          "",
+          "",
+          "",
+          "未定",
+	]);
+
+	continue;
+      }
+
+      for (const j of js) {
+	rows.push([
+          departmentName(k.department_id),
+          k.level ?? "",
+          k.name ?? "",
+          k.hisshu ? "必修" : "",
+          teacherNameOnly(j.teacher_id),
+          termName(j),
+          wdayName(j),
+          j.period == null || j.period === 0
+          ? "未定"
+          : `${j.period}限`,
+          j.excercise ? "演習" : "",
+          j.confirmed ? "決定" : "未定",
+	]);
+      }
+    }
+
+    const csv =
+      "\uFEFF" +
+      rows
+	.map((row) =>
+          row.map(escapeCsv).join(",")
+	)
+	.join("\r\n");
+
+    const blob = new Blob([csv], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `担当表_${year}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+  };  
+
   return (
     <Box sx={{ p: 2 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        {year}年度 担当表
-      </Typography>
+      <Box
+	sx={{
+	  display: "flex",
+	  alignItems: "center",
+	  justifyContent: "space-between",
+	  mb: 2,
+	}}
+      >
+	<Typography variant="h6">
+	  {year}年度 担当表
+	</Typography>
 
+	<Button
+	  variant="outlined"
+	  onClick={handleDownloadCsv}
+	>
+	  CSV出力
+	</Button>
+      </Box>
+      
       {candidateKamokus.map((k) => {
         const js = jugyosByKamoku.get(k.id) ?? [];
         const previousJs =
