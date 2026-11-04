@@ -27,6 +27,9 @@ export default function ProtectedRoute({ children }: { children: any }) {
 
       const allowedAddresses = ["sadahiro@tsuda.ac.jp",
 				"hiroaki@tsuda.ac.jp",
+				"kunotti@tsuda.ac.jp",
+				"aiko.uemura@tsuda.ac.jp",
+				"ikumi.horie@tsuda.ac.jp",
 				"kfukaya@tsuda.ac.jp",
 				"shiseki@tsuda.ac.jp",
 				"sachiyo.ueda@tsuda.ac.jp",
