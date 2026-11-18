@@ -8,7 +8,8 @@ import {
   Select,
   MenuItem,
 } from "@mui/material";
-import Timetable from "./components/Timetable_dragdrop"
+//import Timetable from "./components/Timetable_dragdrop"
+import Timetable from "./components/Timetable_dragdrop_click_add_anywhere"
 import JugyoManager from "./components/JugyoManager"
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./pages/ProtectedRoute";
@@ -600,6 +601,7 @@ export default function App() {
 		       wdays={wdays}
                        departments={departments}
                        selectedDepartmentId={selectedDepartmentId}
+                       selectedPlanId={selectedPlanId}
 		     />
 		  ))}
 		  {tab === 2 && <KamokuManager

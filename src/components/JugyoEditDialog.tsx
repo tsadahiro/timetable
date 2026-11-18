@@ -199,25 +199,39 @@ export default function JugyoEditDialog({
 	    </MenuItem>
 	  ))}
 	</TextField>
-	*/}
-        <TextField
-          select
-          margin="dense"
-          label="科目"
-          fullWidth
-          value={current.kamoku_id ?? ""}
-          onChange={(e) =>
-            setCurrent({ ...current, kamoku_id: Number(e.target.value) })
-          }
-        >
-          {kamokus
-            .sort((a, b) => a.level - b.level)
-            .map((k) => (
-              <MenuItem key={k.id} value={k.id}>
-                {k.name}（Lv.{k.level}）
-              </MenuItem>
-            ))}
-        </TextField>
+	  */}
+	<Autocomplete
+	  options={kamokus}
+	  value={
+	  kamokus.find(
+	    (k: any) => k.id === current.kamoku_id
+	  ) ?? null
+	  }
+	  onChange={(_, newValue) => {
+	    setCurrent({
+	      ...current,
+	      kamoku_id: newValue?.id ?? null,
+
+	      // 科目が決まれば学科も自動で合わせるなら
+	      department_id:
+			 newValue?.department_id ??
+			 current.department_id,
+	    });
+	  }}
+	  getOptionLabel={(k: any) =>
+	    k.name ?? ""
+	  }
+	  isOptionEqualToValue={(option, value) =>
+	    option.id === value.id
+	  }
+	  renderInput={(params) => (
+	    <TextField
+	      {...params}
+	      label="科目"
+	      fullWidth
+	    />
+	  )}
+	/>
 
 	<TextField
 	  select
